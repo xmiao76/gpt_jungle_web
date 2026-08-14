@@ -113,6 +113,7 @@ export function SidePanel(props: SidePanelProps) {
               return `${coordinateOf(target.destination)} (${target.jump ? `jump ${kind}` : kind})`;
             }).join(", ") || "-"}</dd></div>
             <div><dt>Python</dt><dd>{snapshot.runtime.pythonVersion}</dd></div>
+            <div><dt>Hard AI</dt><dd>{snapshot.runtime.hardAiVersion}</dd></div>
             <div><dt>Tablebase</dt><dd>{snapshot.runtime.tablebaseLoaded ? "Loaded" : "Unavailable"}</dd></div>
           </dl>
         </section>

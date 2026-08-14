@@ -24,6 +24,7 @@ const zip = new JSZip();
 const fixedDate = new Date("1980-01-01T00:00:00.000Z");
 const archiveInputs = [
   ...(await walkFiles(path.join(pythonRoot, "jungle"))),
+  ...(await walkFiles(path.join(pythonRoot, "web_ai"))),
   path.join(pythonRoot, "browser_bridge.py"),
 ];
 

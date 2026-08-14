@@ -75,12 +75,12 @@ export function Board({ snapshot, flipped, selected, targets, disabled, onSquare
                 data-display-index={displayIndex}
                 data-canonical-index={canonicalIndex}
                 aria-label={label}
+                aria-selected={selected === canonicalIndex}
                 disabled={disabled}
                 onClick={() => onSquare(canonicalIndex)}
                 style={{ backgroundImage: `url(${terrainAsset(terrain)})` }}
               >
                 {terrain !== "land" ? <span className="terrain-caption">{terrainLabel(terrain)}</span> : null}
-                {target ? <span className="move-marker" aria-hidden="true" /> : null}
               </button>
             );
           })}
@@ -100,6 +100,7 @@ export function Board({ snapshot, flipped, selected, targets, disabled, onSquare
                 style={style}
                 key={`${piece.side}-${piece.kind}`}
                 data-piece={`${piece.side}-${piece.kind.toLowerCase()}`}
+                data-piece-index={canonicalIndex}
               >
                 <img
                   src={pieceAsset(piece)}
@@ -108,6 +109,25 @@ export function Board({ snapshot, flipped, selected, targets, disabled, onSquare
                 />
                 <span>{PIECE_NAMES[piece.kind]}</span>
               </div>
+            );
+          })}
+        </div>
+
+        <div className="feedback-layer" aria-hidden="true">
+          {Array.from({ length: 63 }, (_, displayIndex) => {
+            const canonicalIndex = displayToCanonical(displayIndex, flipped);
+            const target = targetMap.get(canonicalIndex);
+            const classes = [
+              "feedback-square",
+              selected === canonicalIndex ? "feedback-square--selected" : "",
+              target ? (target.capture ? "feedback-square--capture" : "feedback-square--legal") : "",
+              lastOrigin === canonicalIndex ? "feedback-square--last-origin" : "",
+              lastDestination === canonicalIndex ? "feedback-square--last-destination" : "",
+            ].filter(Boolean).join(" ");
+            return (
+              <span className={classes} data-feedback-index={canonicalIndex} key={displayIndex}>
+                {target ? <span className="move-marker" /> : null}
+              </span>
             );
           })}
         </div>

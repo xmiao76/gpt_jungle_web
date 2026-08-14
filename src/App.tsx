@@ -494,8 +494,8 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <span>App {packageJson.version} · Engine 0.1.0 · Pyodide 314.0.3 · exact Python rules</span>
-        <span>Source: GPT 5.6-Sol / Ultra / Codex · b0bb427 · Web: GPT-5 / effort not exposed / Codex</span>
+        <span>App {packageJson.version} · Engine {snapshot.runtime.engineVersion} · Pyodide 314.0.3 · exact Python rules</span>
+        <span>Source b0bb427 · Hard {snapshot.runtime.hardAiVersion} · browser-only optimization</span>
       </footer>
 
       <input ref={fileInputRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => void onFileSelected(event)} />

@@ -58,6 +58,7 @@ export interface RuntimeInfo {
   pythonVersion: string;
   engineVersion: string;
   tablebaseLoaded: boolean;
+  hardAiVersion: string;
 }
 
 export interface GameSnapshot {
@@ -131,4 +132,3 @@ export const PIECE_RANKS: Record<PieceKind, number> = {
   LION: 7,
   ELEPHANT: 8,
 };
-

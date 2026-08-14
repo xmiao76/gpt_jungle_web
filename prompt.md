@@ -14,7 +14,7 @@ into a static web application in:
 
 `C:\GitHub\gpt_jungle_web`
 
-The web app must let a human play complete Jungle games against the existing Python AI on a polished visual board. All rules and AI computation run locally in the visitor's browser through Pyodide. Cloudflare only hosts static files; there is no server-side game logic, API, database, Pages Function, or paid Worker feature.
+The web app must let a human play complete Jungle games against the Python AI on a polished visual board. All rules and AI computation run locally in the visitor's browser through Pyodide. Cloudflare only hosts static files; there is no server-side game logic, API, database, Pages Function, or paid Worker feature. The implemented web release retains the source Easy/Medium engines and layers the isolated `web-hard-v2` search enhancements over Hard only.
 
 The initial source baseline is desktop commit:
 
@@ -54,6 +54,8 @@ Reuse the following in the web repository with no semantic changes:
 - `jungle/engine`
 - `jungle/ai`
 - `jungle/ai/data/two_piece_v1.jgtb`
+
+Keep those retained files byte-for-byte manifest-locked. Browser-specific adapters and search optimizations belong outside `python/jungle`; the implemented Hard overlay lives in `python/web_ai`. It may optimize representation, evaluation hot paths, move ordering, clock checks, and safe cross-move hints, but it must consume the authoritative source `GameState`, preserve legal-move and make/unmake behavior, and continue to use the exact source tablebase. It must never become a second rules engine.
 
 Do not copy or import the Tkinter UI, desktop controller, PyInstaller specification, executable packaging code, or desktop release scripts into the browser runtime.
 
@@ -114,7 +116,8 @@ Build a deterministic zip archive during `npm run build` using a Node-based scri
 - all required `__init__.py` files;
 - the copied `domain`, `rules`, `engine`, and `ai` modules;
 - the complete `jungle/ai/data/two_piece_v1.jgtb` asset;
-- a small browser-session adapter.
+- a small browser-session adapter;
+- the separately identified browser-only `web_ai` Hard overlay.
 
 The module Worker must:
 
@@ -203,7 +206,7 @@ Use a versioned wrapper equivalent to:
 {
   "schema": "gpt-jungle-save",
   "version": 1,
-  "engineVersion": "0.1.0",
+  "engineVersion": "0.2.0",
   "createdAt": "ISO-8601 timestamp",
   "gameState": {},
   "settings": {
@@ -220,11 +223,13 @@ Store purely local preferences such as mute, reduced audio volume, and the How t
 
 ## AI behavior and performance
 
-Keep the existing AI profiles and search code:
+Keep the source profile distinctions and isolate web-only changes:
 
-- Easy uses `SearchConfig.baseline()`.
-- Medium uses the existing desktop medium configuration.
-- Hard uses `SearchConfig.hard()`, the compact make/unmake core, incremental Zobrist hashing, fixed-size transposition table, bounded quiescence, and exact two-piece tablebase.
+- Easy uses the manifest-locked `SearchConfig.baseline()` implementation.
+- Medium uses the manifest-locked desktop medium implementation.
+- Hard dispatches to `web-hard-v2`, which retains `SearchConfig.hard()`, compact make/unmake behavior, incremental Zobrist hashing, the fixed-size transposition table, bounded quiescence, and the exact two-piece tablebase.
+- `web-hard-v2` uses allocation-light bitboard move generation, precomputed evaluation data, direct packed-move hot paths, stable enhanced ordering, batched deadline checks, and a session-scoped table. Entries from a prior search generation may supply a move-ordering hint but must never supply a score cutoff because repetition history can differ.
+- New game and imported-game operations reset the session-scoped Hard search owner. Runtime diagnostics expose both web engine `0.2.0` and Hard AI `web-hard-v2`.
 
 Use these initial browser time budgets:
 
@@ -232,23 +237,25 @@ Use these initial browser time budgets:
 - Medium: 750 ms
 - Hard: 1,800 ms
 
-Do not multiply these limits merely because Pyodide executes fewer nodes per second. They are user-facing response budgets. Benchmark and tune ordering or browser integration if necessary while preserving AI legality and profile distinctions.
+Do not multiply these limits merely because Pyodide executes fewer nodes per second. They are user-facing response budgets. Benchmark and tune ordering or browser integration while preserving AI legality and profile distinctions. The committed benchmark must gate the web overlay against the locked legacy Hard implementation under equal budgets.
 
 Acceptance targets after the Worker is ready:
 
-- The UI remains interactive at 60 fps while AI search runs.
+- The UI remains responsive while AI search runs; automated Chromium coverage requires at least 30 sampled animation frames/second and sub-750 ms dialog interaction on the benchmark host.
 - A normal Hard move returns in approximately 2.2 seconds or less, allowing modest messaging overhead beyond the 1.8-second search budget.
 - Every AI result is legal for the exact state revision it searched.
 - The tablebase loads once per Worker and produces a nonzero tablebase-hit count on a known two-piece position.
 - Diagnostics show difficulty, completed depth, nodes, nodes per second, transposition hits, tablebase hits, and elapsed milliseconds.
 
-Do not impose a fixed minimum search depth across all browsers and devices. Record benchmark hardware, browser, positions, timings, depths, and node counts in development documentation.
+Do not impose a fixed minimum search depth across all browsers and devices. Record benchmark hardware, browser, positions, timings, depths, and node counts in development documentation. `docs/hard-ai-benchmark.md` is the implementation record: the 20-position tactical/endgame corpus must remain perfect, median throughput must remain at least 1.20× the locked legacy Hard search, and the equal-time overlay comparison must reach at least the legacy completed depth.
 
 ## UI and visual requirements
 
 The final UI must look like a finished public game, not a developer demo.
 
 Use a responsive 7-by-9 DOM board. Render terrain as cell backgrounds and pieces in a separate positioned layer so moves can animate cleanly. Never flip the board with a CSS rotation that turns labels and art upside down.
+
+Keep terrain presentation derived from named row/column coordinates that match the Python domain. In canonical orientation the Blue traps are C9, E9, and D8 (indices 58, 60, and 52); C8 (index 51) is ordinary land. Render selection and legal-move feedback in a dedicated non-interactive layer above the piece layer. Selecting a piece must never hide, replace, dim, or repaint over its piece image while waiting for the destination click.
 
 Canonical orientation shows Red at the top and Blue at the bottom. For a displayed cell index `v`, flipped mode maps to canonical index `62 - v`; unflipped mode maps to `v`. Apply the same mapping to rendering, pointer input, touch input, keyboard focus, highlights, and animation endpoints.
 
@@ -307,6 +314,8 @@ Testing is part of implementation, not a final cleanup step. Every defect found 
 - Run the copied engine suite under CPython 3.12 or newer in CI.
 - Verify the copied tablebase header, rules hash, payload checksum, and representative probes.
 - Verify the source manifest and copied-file hashes.
+- Compare `BrowserCompactPosition` with the locked compact position across at least 100 deterministic random reachable states, including exact move order, make/unmake state, winner, counts, and incremental Zobrist hash.
+- Verify the browser Hard tablebase path, deterministic node-limit behavior, safe persistent hint reuse, runtime version, and the 20-position tactical/throughput benchmark gate.
 
 ### TypeScript and React tests
 
@@ -319,6 +328,7 @@ Use Vitest and React Testing Library to cover at least:
 - loading, ready, recoverable-error, fatal-error, and retry states;
 - Human Starts / AI Starts side assignment;
 - piece selection, legal-target display, capture styling, and disabled input while thinking;
+- the exact terrain index sets and CSS stacking contract: terrain below pieces and selection/target feedback above pieces;
 - undo/redo ply behavior in human-vs-AI and AI-vs-AI;
 - save wrapper generation and invalid-save rejection;
 - AI-vs-AI scheduling and stop-after-current-move behavior;
@@ -339,6 +349,8 @@ Required scenarios:
 7. Probe a known two-piece Hard position and assert a successful tablebase hit.
 8. Run a deterministic, test-only node-limited AI-vs-AI game to a real `den_entry`, `capture_all`, or `no_legal_moves` engine result. A ply-cap adjudication is not a passing terminal result.
 9. Import a near-terminal fixture, complete the winning move through the UI, and verify the result dialog.
+10. Assert D8 is the forward Blue trap, C8 is land, C9/E9 are the remaining Blue traps, and the same canonical cells remain correct after flipping.
+11. Select a starting piece and assert its image remains visible and fully opaque while selected, with the separate feedback layer above it.
 
 Run core smoke coverage in Chromium, Firefox, and WebKit. The deterministic full-game soak may run in Chromium only if total cross-browser runtime would be excessive.
 
@@ -469,10 +481,11 @@ The task is complete only when all of the following are true:
 - A human can complete games against Easy, Medium, and Hard AI without the UI freezing.
 - Human Starts, AI Starts, AI-vs-AI, undo/redo, save/load, board flip, diagnostics, history, audio/mute, animations, and How to Play all work.
 - The web game matches the tested desktop rule behavior, including the absence of a gameplay draw rule.
+- The D8 trap renders at the authoritative coordinate in both orientations, and a selected piece remains visibly present before its destination is chosen.
+- `web-hard-v2` passes all 20 tactical/endgame cases and its equal-budget legacy comparison gates without changing `python/jungle` or the desktop repository.
 - The copied Python tests, source-manifest check, TypeScript tests, component tests, Pyodide smoke tests, cross-browser tests, and deterministic terminal full-game test all pass.
 - Every discovered defect has been fixed and regression-tested when practical.
 - The production build uses only relative/static assets and contains no server-side compute.
 - The site is deployed at `https://gpt-jungle.pages.dev` and the public deployment has been verified through a complete game.
 - `README.md` contains the required workflows, architecture, live URL, and accurate provenance.
 - This `prompt.md` remains at the repository root and accurately describes the implemented result.
-

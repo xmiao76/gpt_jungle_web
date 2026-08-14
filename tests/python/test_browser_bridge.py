@@ -15,6 +15,8 @@ def test_session_snapshot_and_authoritative_targets() -> None:
     assert len(snapshot["gameState"]["board"]) == 63
     assert sum(piece is not None for piece in snapshot["gameState"]["board"]) == 16
     assert snapshot["runtime"]["tablebaseLoaded"] is True
+    assert snapshot["runtime"]["engineVersion"] == "0.2.0"
+    assert snapshot["runtime"]["hardAiVersion"] == "web-hard-v2"
 
     reply = command(session, "legalTargets", {"origin": 42})
     assert reply["ok"] is True
@@ -56,3 +58,16 @@ def test_ai_move_with_node_limit_is_legal_and_reports_stats() -> None:
     assert len(reply["data"]["history"]) == 1
     assert reply["data"]["aiStats"]["nodes"] <= 100
 
+
+def test_hard_ai_dispatches_to_browser_overlay() -> None:
+    session = BrowserGameSession()
+    reply = command(
+        session,
+        "aiMove",
+        {"difficulty": "hard", "timeLimitMs": 10_000, "nodeLimit": 500},
+    )
+
+    assert reply["ok"] is True
+    assert reply["data"]["runtime"]["hardAiVersion"] == "web-hard-v2"
+    assert reply["data"]["aiStats"]["difficulty"] == "hard"
+    assert reply["data"]["aiStats"]["nodes"] <= 500

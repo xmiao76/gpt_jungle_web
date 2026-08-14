@@ -25,7 +25,11 @@ export function snapshotFixture(): GameSnapshot {
     difficulty: "medium",
     humanSide: "blue",
     aiStats: null,
-    runtime: { pythonVersion: "3.14.2", engineVersion: "0.1.0", tablebaseLoaded: true },
+    runtime: {
+      pythonVersion: "3.14.2",
+      engineVersion: "0.2.0",
+      tablebaseLoaded: true,
+      hardAiVersion: "web-hard-v2",
+    },
   };
 }
-

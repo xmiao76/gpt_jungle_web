@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:python": "python -m pytest tests/python -q",
+    "benchmark:ai": "python -m tools.web_ai_benchmark",
     "test:e2e": "npm run build:e2e && playwright test",
     "test:public": "playwright test --config playwright.public.config.ts",
     "test:all": "npm run verify:python && npm run test:python && npm run lint && npm test && npm run build && npm run test:e2e",

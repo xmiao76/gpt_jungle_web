@@ -16,11 +16,12 @@ The requested Git integration could not be attached to the exact project through
 
 - Local validation date: 2026-08-13
 - Status: passed
-- CPython: 98 passed
-- Vitest / React Testing Library: 25 passed across 9 files
-- Playwright: 16 passed, 14 intentional non-Chromium skips across Chromium, Firefox, and WebKit
+- CPython: 106 passed
+- Vitest / React Testing Library: 29 passed across 10 files
+- Playwright: 17 passed, 16 intentional non-Chromium skips across Chromium, Firefox, and WebKit
 - Public production Playwright: 3 passed against the hook-free Pages deployment
-- Deterministic Python archive: `python-runtime.943d395228327cba.zip`, 90,371 bytes
+- Deterministic Python archive: `python-runtime.3d6bfb6025f189ec.zip`, 97,617 bytes
+- Hard AI benchmark: 20/20 tactical/endgame cases, 1.339× median legacy throughput, depth 6 versus depth 5 at equal 1,800 ms budgets
 
 `npm run test:all` runs, in order:
 
@@ -31,7 +32,7 @@ The requested Git integration could not be attached to the exact project through
 5. a normal production build;
 6. a test-enabled production build and real Pyodide Worker flows in Chromium, Firefox, and WebKit.
 
-The browser suite checks runtime readiness, the initial board, legal selection and a human/AI turn, canonical flip invariance, AI-first behavior, paired undo/redo and JSON persistence, main-thread responsiveness during Hard search, a known tablebase hit, an authentic deterministic terminal AI game, and a terminal move/result dialog fixture.
+The browser suite checks runtime readiness, the initial board, legal selection and a human/AI turn, canonical flip invariance, AI-first behavior, paired undo/redo and JSON persistence, authoritative trap coordinates, selected-piece stacking, main-thread responsiveness during Hard search, a known tablebase hit, an authentic deterministic terminal AI game, and a terminal move/result dialog fixture. The standalone `npm run benchmark:ai` gate compares the isolated `web-hard-v2` overlay with the manifest-locked legacy Hard search.
 
 ## Browser performance record
 
@@ -47,9 +48,9 @@ Observed on 2026-08-13 from the standard initial position:
 
 | Depth | Nodes | Nodes/s | TT hits | TB hits | Search time |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 4 | 15,520 | 8,621 | 6,148 | 0 | 1,800.2 ms |
+| 5 | 21,312 | 11,830 | 9,060 | 0 | 1,801.5 ms |
 
-The final full-gate run sampled 57.1 animation frames/s during search and opened the interactive How-to-Play dialog in 88 ms; an isolated repeat sampled 60.4 frames/s. A separate deterministic two-piece fixture asserts nonzero exact tablebase hits; the initial 16-piece position is not tablebase-eligible. Search node counts vary with machine load because the desktop engine correctly searches until the fixed wall-clock budget rather than enforcing a fixed depth.
+The final full-gate run sampled 52.0 animation frames/s during search and opened the interactive How-to-Play dialog in 82 ms. A separate deterministic two-piece fixture asserts nonzero exact tablebase hits; the initial 16-piece position is not tablebase-eligible. Search node counts vary with machine load because the engine correctly searches until the fixed wall-clock budget rather than enforcing a fixed depth. The reproducible CPython comparison and its interpretation are recorded in [Hard AI benchmark](hard-ai-benchmark.md).
 
 ## Public post-deploy checklist
 

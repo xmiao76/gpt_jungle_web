@@ -1,8 +1,8 @@
 # GPT Jungle — Web Edition
 
-Play Jungle / Dou Shou Qi against the original Python AI in a browser. The verified production game is live at **[gpt-jungle.pages.dev](https://gpt-jungle.pages.dev)** on Cloudflare Pages. Deployment status and the dated public checklist are recorded in [release validation](docs/release-validation.md).
+Play Jungle / Dou Shou Qi against the original Python engine in a browser. The verified production game is live at **[gpt-jungle.pages.dev](https://gpt-jungle.pages.dev)** on Cloudflare Pages. Deployment status and the dated public checklist are recorded in [release validation](docs/release-validation.md).
 
-This is a real browser port of [GPT_CX_Jungle](https://github.com/xmiao76/gpt_cx_jungle), not a JavaScript rewrite of its rules. The copied Python domain, rules, engine, all three AI profiles, and exact two-piece tablebase run locally in Pyodide 314.0.3 inside a module Web Worker. Cloudflare serves static files only.
+This is a real browser port of [GPT_CX_Jungle](https://github.com/xmiao76/gpt_cx_jungle), not a JavaScript rewrite of its rules. The manifest-locked Python domain, rules, engine, AI baseline, and exact two-piece tablebase run locally in Pyodide 314.0.3 inside a module Web Worker. A browser-only Hard-search overlay improves throughput without changing the authoritative rules or the desktop repository. Cloudflare serves static files only.
 
 ## Visual overview
 
@@ -14,7 +14,7 @@ Blue always moves first. Choose **Human starts** to control Blue or **AI starts*
 
 Win by entering the opponent's den, capturing every opposing animal, or leaving the opponent without a legal move. This engine intentionally has no gameplay repetition or no-capture draw. The complete engine-specific rules—including Rat/Elephant, river, jump, trap, and den behavior—are available from **How to Play** and the [authoritative source ruleset](https://github.com/xmiao76/gpt_cx_jungle/blob/b0bb427458a686aa0ed10770bda50f9311a7845b/docs/ruleset.md).
 
-- **Easy / Medium / Hard** retain the desktop search profiles with 250 / 750 / 1,800 ms browser budgets. Hard uses compact alpha-beta search and the exact two-piece tablebase.
+- **Easy / Medium** retain the desktop search implementations with 250 / 750 ms browser budgets. **Hard** uses the `web-hard-v2` overlay with the same 1,800 ms budget, compact alpha-beta search, persistent move-ordering hints, allocation-light position handling, and the exact two-piece tablebase.
 - **Undo** normally removes a completed human/AI pair; **Redo** restores those exact plies without asking the AI to search again.
 - **Save / Load** downloads and reads portable JSON files. **Flip Board** changes display mapping only.
 - **Diagnostics** exposes authoritative targets, effective rank, runtime data, and search statistics. **AI vs AI** yields after each move and stops after an in-progress search completes.
@@ -43,6 +43,7 @@ npm run preview         # serve dist locally
 npm run lint            # ESLint with zero warnings
 npm test                # Vitest and React Testing Library
 npm run test:python     # copied engine and browser-adapter tests under CPython
+npm run benchmark:ai    # tactical corpus plus legacy-versus-web Hard throughput gate
 npm run test:e2e        # real Worker/Pyodide tests in Chromium, Firefox, and WebKit
 npm run test:public     # hook-free smoke and complete-game checks against production
 npm run test:all        # source audit, all tests, lint, and production builds
@@ -67,8 +68,10 @@ There are no Pages Functions, Worker handlers, bindings, secrets, databases, KV 
 flowchart LR
     UI[React main thread<br/>DOM board and presentation] <-->|typed ID + revision protocol| W[Module Web Worker]
     W --> P[Pyodide 314.0.3<br/>Python 3.14]
-    P --> E[Copied Python<br/>domain · rules · engine · AI]
+    P --> E[Manifest-locked Python<br/>domain · rules · engine · AI]
+    P --> H[Browser-only Hard overlay<br/>web-hard-v2]
     E --> T[Exact two-piece<br/>tablebase]
+    H --> E
     B[Deterministic build script] --> Z[Hashed Python archive]
     Z --> W
     C[Cloudflare Pages<br/>static files only] --> UI
@@ -77,11 +80,11 @@ flowchart LR
 
 The main thread owns presentation state only: selection, dialogs, animation, sound, orientation, and AI-vs-AI scheduling. The Worker owns one authoritative Python session. Runtime-validated messages carry request IDs and revisions, and stale state responses are rejected. Canonical indices are always Red-at-top/Blue-at-bottom; flipped display index `v` maps to canonical index `62 - v`, without mutating game state.
 
-During `npm run build`, `scripts/build-python-archive.mjs` verifies every reusable Python/tablebase file against `python/source-manifest.json`, then creates a byte-reproducible, content-hashed zip. This preserves the package layout needed by `importlib.resources` to find the tablebase. See [architecture](docs/architecture.md) for the protocol and release boundaries.
+During `npm run build`, `scripts/build-python-archive.mjs` verifies every reused desktop Python/tablebase file against `python/source-manifest.json`, then packages those locked sources with the separately identified browser bridge and `python/web_ai` overlay into a byte-reproducible, content-hashed zip. This preserves the package layout needed by `importlib.resources` to find the tablebase. See [architecture](docs/architecture.md) for the protocol and release boundaries.
 
 ## Saves and compatibility
 
-Save files use schema `gpt-jungle-save`, version `1`, and include engine version `0.1.0`, timestamp, serializable `GameState`, difficulty, human side, and orientation. Import validates the wrapper in TypeScript and the board, enums, move history, turn, terrain occupancy, and terminal state in Python before replacing the live session. A loaded game intentionally begins with empty undo/redo stacks, matching the desktop format limitation.
+Save files use schema `gpt-jungle-save`, version `1`, and include the current web engine version (`0.2.0`), timestamp, serializable `GameState`, difficulty, human side, and orientation. Import validates the wrapper in TypeScript and the board, enums, move history, turn, terrain occupancy, and terminal state in Python before replacing the live session. A loaded game intentionally begins with empty undo/redo stacks, matching the desktop format limitation; version-1 files from engine `0.1.0` remain accepted.
 
 ## Browser support and limitations
 
@@ -97,10 +100,10 @@ The production bundle is exercised with current Playwright Chromium, Firefox, an
 | Component | Model | Reasoning effort | Code agent | Version / commit |
 | --- | --- | --- | --- | --- |
 | Source desktop engine | GPT 5.6-Sol | Ultra | Codex | Engine 0.1.0 · [`b0bb427`](https://github.com/xmiao76/gpt_cx_jungle/commit/b0bb427458a686aa0ed10770bda50f9311a7845b) |
-| Web port | GPT-5 | Not exposed by the implementation runtime | Codex | Frontend 1.0.0 |
+| Web port and Hard overlay | GPT-5 | Not exposed by the implementation runtime | Codex | Frontend 1.0.0 · web engine 0.2.0 · `web-hard-v2` |
 
-Runtime details are also visible in the application: Pyodide `314.0.3`, detected Python `3.14.x`, and engine `0.1.0`. Source provenance and SHA-256 hashes are locked in [`python/source-manifest.json`](python/source-manifest.json).
+Runtime details are also visible in the application: Pyodide `314.0.3`, detected Python `3.14.x`, web engine `0.2.0`, and Hard AI `web-hard-v2`. The unchanged source engine remains version `0.1.0`; its provenance and SHA-256 hashes are locked in [`python/source-manifest.json`](python/source-manifest.json).
 
 ## Verification
 
-The copied CPython suite, source manifest, unit/component suite, production build, cross-browser real-Pyodide flows, exact tablebase probe, and deterministic authentic terminal game are automated. Performance measurements and the dated deployment checklist live in [release validation](docs/release-validation.md). CI runs the entire suite on every pull request and `main` push.
+The copied CPython suite, source manifest, web-overlay parity tests, unit/component suite, production build, cross-browser real-Pyodide flows, exact tablebase probe, and deterministic authentic terminal game are automated. The [Hard AI benchmark](docs/hard-ai-benchmark.md) records the tactical and throughput gates; performance measurements and the dated deployment checklist live in [release validation](docs/release-validation.md). CI runs the entire suite on every pull request and `main` push.

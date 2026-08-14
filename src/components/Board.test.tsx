@@ -49,6 +49,27 @@ describe("Board", () => {
       />,
     );
     expect(screen.getByRole("gridcell", { name: /A3, Land, red Rat, legal capture/i })).toHaveClass("board-square--capture");
+    expect(document.querySelector('[data-feedback-index="14"]')).toHaveClass("feedback-square--capture");
     expect(screen.getByAltText("Blue Elephant at A7")).toBeInTheDocument();
+  });
+
+  it("keeps selected-piece feedback separate from the terrain and piece layers", () => {
+    render(
+      <Board
+        snapshot={snapshotFixture()}
+        flipped={false}
+        selected={42}
+        targets={[{ destination: 35, capture: false, captured: null, jump: false, note: "" }]}
+        disabled={false}
+        onSquare={() => undefined}
+      />,
+    );
+
+    const selectedCell = screen.getByRole("gridcell", { name: /A7, Land, blue Elephant/i });
+    expect(selectedCell).toHaveAttribute("aria-selected", "true");
+    expect(selectedCell.querySelector(".move-marker")).toBeNull();
+    expect(document.querySelector('.piece[data-piece-index="42"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-feedback-index="42"]')).toHaveClass("feedback-square--selected");
+    expect(document.querySelector('[data-feedback-index="35"] .move-marker')).toBeInTheDocument();
   });
 });

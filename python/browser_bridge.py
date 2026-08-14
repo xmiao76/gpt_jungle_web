@@ -19,9 +19,10 @@ from jungle.domain import (
 )
 from jungle.engine import Game
 from jungle.rules import effective_rank, evaluate_result
+from web_ai import HARD_AI_VERSION, BrowserHardAI
 
 
-ENGINE_VERSION = "0.1.0"
+ENGINE_VERSION = "0.2.0"
 DIFFICULTY_LIMITS = {"easy": 250, "medium": 750, "hard": 1_800}
 DIFFICULTY_CONFIGS = {
     "easy": SearchConfig.baseline(),
@@ -47,12 +48,14 @@ class RuntimeDetails:
     python_version: str
     engine_version: str
     tablebase_loaded: bool
+    hard_ai_version: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "pythonVersion": self.python_version,
             "engineVersion": self.engine_version,
             "tablebaseLoaded": self.tablebase_loaded,
+            "hardAiVersion": self.hard_ai_version,
         }
 
 
@@ -179,7 +182,9 @@ class BrowserGameSession:
             python_version=platform.python_version(),
             engine_version=ENGINE_VERSION,
             tablebase_loaded=self.tablebase_loaded,
+            hard_ai_version=HARD_AI_VERSION,
         )
+        self._hard_ai = BrowserHardAI(DIFFICULTY_CONFIGS["hard"])
         self._handlers: dict[str, Callable[[dict[str, Any]], Any]] = {
             "newGame": self._new_game,
             "legalTargets": self._legal_targets,
@@ -242,6 +247,7 @@ class BrowserGameSession:
         self.difficulty = _difficulty(payload.get("difficulty"))
         self.human_side = _side(payload.get("humanSide"))
         self.game.new_game()
+        self._hard_ai.reset()
         self.ai_stats = None
         self.revision += 1
         return self.snapshot()
@@ -301,11 +307,18 @@ class BrowserGameSession:
                 raise BrowserCommandError("INVALID_PAYLOAD", "nodeLimit must be an integer.")
             node_limit = max(1, min(node_limit, 1_000_000))
 
-        result = AlphaBetaAI(
-            time_limit,
-            DIFFICULTY_CONFIGS[difficulty],
-            node_limit=node_limit,
-        ).choose_move(self.game.state.copy())
+        if difficulty == "hard":
+            result = self._hard_ai.choose_move(
+                self.game.state.copy(),
+                time_limit_ms=time_limit,
+                node_limit=node_limit,
+            )
+        else:
+            result = AlphaBetaAI(
+                time_limit,
+                DIFFICULTY_CONFIGS[difficulty],
+                node_limit=node_limit,
+            ).choose_move(self.game.state.copy())
         if result.move is None:
             if self.game.state.winner is None:
                 raise BrowserCommandError("AI_NO_MOVE", "The AI did not return a move for a non-terminal state.")
@@ -365,6 +378,7 @@ class BrowserGameSession:
         difficulty = _difficulty(payload.get("difficulty", self.difficulty))
         human_side = _side(payload.get("humanSide", self.human_side.value))
         self.game = Game(state)
+        self._hard_ai.reset()
         self.difficulty = difficulty
         self.human_side = human_side
         self.ai_stats = None
@@ -382,4 +396,3 @@ class BrowserGameSession:
 
 def create_session() -> BrowserGameSession:
     return BrowserGameSession()
-

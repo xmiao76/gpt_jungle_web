@@ -287,6 +287,7 @@ export function isGameSnapshot(value: unknown): value is GameSnapshot {
     typeof value.runtime.pythonVersion === "string" &&
     typeof value.runtime.engineVersion === "string" &&
     typeof value.runtime.tablebaseLoaded === "boolean" &&
+    typeof value.runtime.hardAiVersion === "string" &&
     (value.appliedMove === undefined || isHistoryEntry(value.appliedMove)) &&
     (value.appliedPlies === undefined || Number.isInteger(value.appliedPlies))
   );

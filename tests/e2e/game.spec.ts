@@ -61,13 +61,41 @@ test("loads the real Pyodide engine and completes a human/AI turn", async ({ pag
   expect(await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot()?.gameState.board.filter(Boolean).length)).toBe(16);
 
   await page.locator('[data-canonical-index="42"]').click();
-  await expect(page.locator('[data-canonical-index="35"] .move-marker')).toBeVisible();
+  await expect(page.locator('[data-feedback-index="35"] .move-marker')).toBeVisible();
   await page.locator('[data-canonical-index="35"]').click();
   await expect(page.locator(".move-history li")).toHaveCount(2, { timeout: 30_000 });
 
   const snapshot = await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot());
   expect(snapshot?.gameState.side_to_move).toBe("blue");
   expect(snapshot?.history).toHaveLength(2);
+});
+
+test("terrain coordinates and selected-piece layers stay visually correct", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "Visual stacking geometry is covered once in Chromium.");
+  await startGame(page, "easy", "human");
+
+  await expect(page.locator('[data-canonical-index="52"]')).toHaveAccessibleName(/D8, Blue trap/i);
+  await expect(page.locator('[data-canonical-index="51"]')).toHaveAccessibleName(/C8, Land/i);
+  await expect(page.locator('[data-canonical-index="58"]')).toHaveAccessibleName(/C9, Blue trap/i);
+  await expect(page.locator('[data-canonical-index="60"]')).toHaveAccessibleName(/E9, Blue trap/i);
+
+  await page.locator('[data-canonical-index="42"]').click();
+  await expect(page.locator('[data-canonical-index="42"]')).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator('.piece[data-piece-index="42"] img')).toBeVisible();
+  await expect(page.locator('[data-feedback-index="42"]')).toHaveClass(/feedback-square--selected/);
+
+  const layers = await page.evaluate(() => ({
+    squares: Number.parseInt(getComputedStyle(document.querySelector(".square-layer")!).zIndex, 10),
+    pieces: Number.parseInt(getComputedStyle(document.querySelector(".piece-layer")!).zIndex, 10),
+    feedback: Number.parseInt(getComputedStyle(document.querySelector(".feedback-layer")!).zIndex, 10),
+    pieceOpacity: getComputedStyle(document.querySelector('.piece[data-piece-index="42"]')!).opacity,
+    pieceVisibility: getComputedStyle(document.querySelector('.piece[data-piece-index="42"]')!).visibility,
+  }));
+  expect(layers).toEqual({ squares: 1, pieces: 2, feedback: 3, pieceOpacity: "1", pieceVisibility: "visible" });
+
+  await page.getByRole("button", { name: "Flip Board" }).click();
+  await expect(page.locator('[data-canonical-index="52"]')).toHaveAccessibleName(/D8, Blue trap/i);
+  await expect(page.locator('[data-display-index="10"]')).toHaveAttribute("data-canonical-index", "52");
 });
 
 test("an AI move is legal for the exact revision it searched", async ({ page, browserName }) => {
