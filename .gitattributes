@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# These are provenance-locked copies. Preserve the desktop bytes exactly so
+# source-manifest hashes are identical on Windows and Linux checkouts.
+python/jungle/**/*.py -text
+python/jungle/**/*.jgtb -text
