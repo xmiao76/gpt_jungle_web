@@ -8,7 +8,10 @@
 - Deployment mode: authenticated Wrangler Direct Upload (static assets only)
 - Deployment state: live and verified
 - Public verification date: 2026-08-13 (America/Los_Angeles)
-- Verified immutable deployment: <https://e5f226a1.gpt-jungle.pages.dev>
+- Deployed source commit: `cf38f824a0da50a56a2d25666f50d91752a3518a`
+- Verified preview deployment: <https://0aa6cdc0.gpt-jungle.pages.dev>
+- Verified immutable production deployment: <https://6afd6ed7.gpt-jungle.pages.dev>
+- GitHub CI: [passed in 4m58s](https://github.com/xmiao76/gpt_jungle_web/actions/runs/31774741717)
 
 The requested Git integration could not be attached to the exact project through the available credential: Wrangler's OAuth session supported Pages CLI operations, but the source-enabled public API returned 401 and no standalone API-token environment credential existed. Creating the project with Wrangler therefore selected Direct Upload, which Cloudflare does not allow converting to Git integration later. The repository retains a credential-free validation workflow, and releases use the documented manual command.
 
@@ -56,7 +59,7 @@ The final full-gate run sampled 52.0 animation frames/s during search and opened
 
 - [x] Root HTML, JavaScript, CSS, PNG art, runtime manifest, and Python archive return successfully.
 - [x] Pyodide modules and WASM load without CSP, CORS, MIME, or 404 failures.
-- [x] Worker reaches ready with Python 3.14.2, engine 0.1.0, and tablebase loaded.
+- [x] Worker reaches ready with Python 3.14.2, web engine 0.2.0, Hard AI `web-hard-v2`, and tablebase loaded.
 - [x] No uncaught console exceptions occur.
 - [x] Human Starts completes a human move and legal AI reply.
 - [x] AI Starts assigns the human Red and completes Blue's move without blocking UI.
@@ -67,3 +70,5 @@ The final full-gate run sampled 52.0 animation frames/s during search and opened
 - [x] Desktop and 390 px layouts keep the full board and controls usable without horizontal scrolling.
 
 The public harness also asserts that production contains no `window.__JUNGLE_TEST__` hook. Its network audit observed hashed JavaScript/CSS/PNG assets, the runtime JSON, content-hashed Python zip, Pyodide WASM, and no response at status 400 or higher.
+
+Both the preview and production hostname passed all three public Playwright cases. A direct post-deploy manifest check confirmed that the production alias and immutable deployment serve `python-runtime.3d6bfb6025f189ec.zip` with SHA-256 `3d6bfb6025f189ecd4bac2ab40f3107fb98c7ea031d4c04ac437ce7cbbe189a9`.
