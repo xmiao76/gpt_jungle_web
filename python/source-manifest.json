@@ -1,0 +1,27 @@
+{
+  "schema": "gpt-jungle-source-manifest",
+  "version": 1,
+  "sourceRepository": "https://github.com/xmiao76/gpt_cx_jungle.git",
+  "sourceCommit": "b0bb427458a686aa0ed10770bda50f9311a7845b",
+  "sourceRoot": "src/jungle",
+  "files": {
+    "jungle/__init__.py": "5497b365a46cacbf94c00280d8a4d3c73ade93de1dcd42c90da35a2bba2d02b2",
+    "jungle/ai/__init__.py": "070c2b959899ddd410c7ccab0f59be08a1b442f44ad4021307a3f5b172d47158",
+    "jungle/ai/core.py": "a8791fce63cd1cd93de18abc60f02d26d23201860716243af0273cd051c3e8f7",
+    "jungle/ai/data/two_piece_v1.jgtb": "a32b620d22d1735ef4f2a13b8d1388c07ad45151060f638c2434db988f97ece5",
+    "jungle/ai/evaluation.py": "4f1c602f06e2b441e303aa8e7324520d6ec22445051236fb01cc75d0af1ea940",
+    "jungle/ai/fast_evaluation.py": "5e5e9480dd8e2259f24b2ffff549c01f94c313ce8f16065f761bb94eeefcde7f",
+    "jungle/ai/fast_search.py": "511ed60e963bb78a2e0b1d30250c3846a86b9280bdbaff5cec4875c95954bf40",
+    "jungle/ai/position.py": "129ab0749b79744d30f4dd2db4ab59045ad19e3e9a602b9a7a2e344a8da578bc",
+    "jungle/ai/search.py": "c95c91690c07be79383abb82626d30ed2a251e6825525477c5f184df50f194a4",
+    "jungle/ai/tablebase.py": "ba3a733aad2c31d8c7e5ad259fd18ca0b9a6f6a44c346748f66dd92188cd5f95",
+    "jungle/ai/transposition.py": "514a63d08a9be95e5980c8007f8a6bae7a9a20ec6f88587a02502d9757484d4e",
+    "jungle/domain/__init__.py": "92d9f069d143ccdd461c8669a13f169a0a62dc20784c48abf0e1cdf919c28af6",
+    "jungle/domain/board.py": "e6f1318f466d9c13bcdd38eeb133cd9fb50c9942c0cdd4658a08d00bc7064db4",
+    "jungle/domain/types.py": "9d4cd2c7bf91ff4ee51b3d428b91e57d5b7285ce948d10d0eeba9ff42e4995cb",
+    "jungle/engine/__init__.py": "527388215f5d3444575f92d39994fd17b669dff79162e9024908aeeb15a406ee",
+    "jungle/engine/game.py": "5890cee47168d1409851ac8d0d8eef777198829dc1355b83f56c7b0d18dfceef",
+    "jungle/rules/__init__.py": "8a8ee300c4af9a698b10a8f77499656cc73d4507b3130febec4cbb53f520d1df",
+    "jungle/rules/logic.py": "cad8db28b694bca3d2d9ada3758d5f57945d633383f37e9be2d14dd0540ff43d"
+  }
+}
