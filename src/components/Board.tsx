@@ -1,5 +1,5 @@
 import type { CSSProperties, KeyboardEvent } from "react";
-import { pieceAsset, terrainAsset } from "../assets";
+import { boardBackgroundAsset, pieceAsset, terrainAsset } from "../assets";
 import { coordinateOf, displayToCanonical, canonicalToDisplay, columnOf, rowOf } from "../game/orientation";
 import { terrainAt, terrainLabel } from "../game/terrain";
 import { PIECE_NAMES, type GameSnapshot, type LegalTarget } from "../game/types";
@@ -37,9 +37,10 @@ export function Board({ snapshot, flipped, selected, targets, disabled, onSquare
   const targetMap = new Map(targets.map((target) => [target.destination, target]));
   const lastOrigin = snapshot.lastMove?.origin;
   const lastDestination = snapshot.lastMove?.destination;
+  const frameStyle = { "--board-background-image": `url(${boardBackgroundAsset})` } as CSSProperties;
 
   return (
-    <div className="board-frame">
+    <div className="board-frame" style={frameStyle}>
       <div
         className={`board${disabled ? " board--disabled" : ""}`}
         role="grid"

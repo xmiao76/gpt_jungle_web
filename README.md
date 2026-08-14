@@ -1,6 +1,6 @@
 # GPT Jungle — Web Edition
 
-Play Jungle / Dou Shou Qi against the original Python AI in a browser. The production target is **[gpt-jungle.pages.dev](https://gpt-jungle.pages.dev)** on Cloudflare Pages. Deployment status and the latest public verification are recorded in [release validation](docs/release-validation.md).
+Play Jungle / Dou Shou Qi against the original Python AI in a browser. The verified production game is live at **[gpt-jungle.pages.dev](https://gpt-jungle.pages.dev)** on Cloudflare Pages. Deployment status and the dated public checklist are recorded in [release validation](docs/release-validation.md).
 
 This is a real browser port of [GPT_CX_Jungle](https://github.com/xmiao76/gpt_cx_jungle), not a JavaScript rewrite of its rules. The copied Python domain, rules, engine, all three AI profiles, and exact two-piece tablebase run locally in Pyodide 314.0.3 inside a module Web Worker. Cloudflare serves static files only.
 
@@ -44,6 +44,7 @@ npm run lint            # ESLint with zero warnings
 npm test                # Vitest and React Testing Library
 npm run test:python     # copied engine and browser-adapter tests under CPython
 npm run test:e2e        # real Worker/Pyodide tests in Chromium, Firefox, and WebKit
+npm run test:public     # hook-free smoke and complete-game checks against production
 npm run test:all        # source audit, all tests, lint, and production builds
 npm run deploy          # deploy an already validated dist to Cloudflare Pages
 ```
@@ -56,7 +57,9 @@ npm run build
 npx wrangler pages deploy dist --project-name gpt-jungle --branch main
 ```
 
-Normal production and preview releases can use Cloudflare Pages Git integration with build command `npm run build`, output directory `dist`, and Node 22. There are no Pages Functions, Worker handlers, bindings, secrets, databases, KV namespaces, Durable Objects, or R2 buckets. The Pages project name is derived from `gpt_jungle_web` by removing the generic `_web` suffix and converting underscores to hyphens: `gpt-jungle`.
+The live `gpt-jungle` project uses authenticated Cloudflare Pages Direct Upload through `npm run deploy`; repository CI validates every pushed source revision but does not hold deployment credentials. The account's Wrangler OAuth login could create/deploy the project, while the public source-enabled API required a separate API-token credential that was not present. [Cloudflare makes a project's Direct Upload versus Git-integration mode immutable](https://developers.cloudflare.com/pages/get-started/direct-upload/), so changing this existing project to automatic Git deployment would require creating a differently named Pages project. Build settings remain `npm run build`, output `dist`, and Node 22.
+
+There are no Pages Functions, Worker handlers, bindings, secrets, databases, KV namespaces, Durable Objects, or R2 buckets. The Pages project name is derived from `gpt_jungle_web` by removing the generic `_web` suffix and converting underscores to hyphens: `gpt-jungle`.
 
 ## Architecture
 
@@ -101,4 +104,3 @@ Runtime details are also visible in the application: Pyodide `314.0.3`, detected
 ## Verification
 
 The copied CPython suite, source manifest, unit/component suite, production build, cross-browser real-Pyodide flows, exact tablebase probe, and deterministic authentic terminal game are automated. Performance measurements and the dated deployment checklist live in [release validation](docs/release-validation.md). CI runs the entire suite on every pull request and `main` push.
-

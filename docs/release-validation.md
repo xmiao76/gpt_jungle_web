@@ -5,10 +5,12 @@
 - Target URL: <https://gpt-jungle.pages.dev>
 - Cloudflare Pages project: `gpt-jungle`
 - Production branch: `main`
-- Deployment state: pending the authenticated release step for this implementation
-- Public verification date: pending
+- Deployment mode: authenticated Wrangler Direct Upload (static assets only)
+- Deployment state: live and verified
+- Public verification date: 2026-08-13 (America/Los_Angeles)
+- Verified immutable deployment: <https://e5f226a1.gpt-jungle.pages.dev>
 
-This document is updated after the public deployment is exercised. A local pass alone is never recorded as public verification.
+The requested Git integration could not be attached to the exact project through the available credential: Wrangler's OAuth session supported Pages CLI operations, but the source-enabled public API returned 401 and no standalone API-token environment credential existed. Creating the project with Wrangler therefore selected Direct Upload, which Cloudflare does not allow converting to Git integration later. The repository retains a credential-free validation workflow, and releases use the documented manual command.
 
 ## Automated release gate
 
@@ -17,6 +19,7 @@ This document is updated after the public deployment is exercised. A local pass 
 - CPython: 98 passed
 - Vitest / React Testing Library: 25 passed across 9 files
 - Playwright: 16 passed, 14 intentional non-Chromium skips across Chromium, Firefox, and WebKit
+- Public production Playwright: 3 passed against the hook-free Pages deployment
 - Deterministic Python archive: `python-runtime.943d395228327cba.zip`, 90,371 bytes
 
 `npm run test:all` runs, in order:
@@ -50,14 +53,16 @@ The final full-gate run sampled 57.1 animation frames/s during search and opened
 
 ## Public post-deploy checklist
 
-- [ ] Root HTML, JavaScript, CSS, PNG art, runtime manifest, and Python archive return successfully.
-- [ ] Pyodide modules and WASM load without CSP, CORS, MIME, or 404 failures.
-- [ ] Worker reaches ready with Python 3.14, engine 0.1.0, and tablebase loaded.
-- [ ] No uncaught console exceptions occur.
-- [ ] Human Starts completes a human move and legal AI reply.
-- [ ] AI Starts assigns the human Red and completes Blue's move without blocking UI.
-- [ ] A complete deterministic game reaches `den_entry`, `capture_all`, or `no_legal_moves` from the engine.
-- [ ] Save/load and paired undo/redo preserve an exact position.
-- [ ] Flip preserves canonical state; diagnostics and AI statistics populate.
-- [ ] AI-vs-AI starts and stops after the active search; audio/mute toggles safely.
-- [ ] Desktop and narrow responsive layouts keep the full board and controls usable without horizontal scrolling.
+- [x] Root HTML, JavaScript, CSS, PNG art, runtime manifest, and Python archive return successfully.
+- [x] Pyodide modules and WASM load without CSP, CORS, MIME, or 404 failures.
+- [x] Worker reaches ready with Python 3.14.2, engine 0.1.0, and tablebase loaded.
+- [x] No uncaught console exceptions occur.
+- [x] Human Starts completes a human move and legal AI reply.
+- [x] AI Starts assigns the human Red and completes Blue's move without blocking UI.
+- [x] A complete deterministic two-piece game reaches an authentic engine terminal result.
+- [x] Save/load and paired undo/redo preserve an exact position.
+- [x] Flip preserves canonical state; diagnostics and AI statistics populate.
+- [x] AI-vs-AI completes a game; local regression coverage verifies stop-after-current-search; mute toggles safely.
+- [x] Desktop and 390 px layouts keep the full board and controls usable without horizontal scrolling.
+
+The public harness also asserts that production contains no `window.__JUNGLE_TEST__` hook. Its network audit observed hashed JavaScript/CSS/PNG assets, the runtime JSON, content-hashed Python zip, Pyodide WASM, and no response at status 400 or higher.
