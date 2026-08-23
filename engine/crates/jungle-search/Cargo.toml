@@ -1,0 +1,21 @@
+[package]
+name = "jungle-search"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+jungle-core = { path = "../jungle-core" }
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lib]
+crate-type = ["rlib"]
+
+[[bench]]
+name = "search_benchmark"
+harness = false

@@ -3,8 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
-  // Pyodide searches are intentionally CPU-bound. Serial projects model one
-  // active game tab and keep browser-engine compatibility checks independent.
+  // Rust/Wasm searches are CPU-bound and use a disposable search Worker.
+  // Serial projects keep timing and cancellation checks isolated per browser.
   workers: 1,
   timeout: 120_000,
   expect: { timeout: 20_000 },

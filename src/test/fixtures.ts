@@ -17,6 +17,7 @@ export function snapshotFixture(): GameSnapshot {
   gameState.board[14] = { side: "red", kind: "RAT" };
   return {
     revision: 0,
+    positionHash: "0123456789abcdef",
     gameState,
     history: [],
     lastMove: null,
@@ -26,10 +27,21 @@ export function snapshotFixture(): GameSnapshot {
     humanSide: "blue",
     aiStats: null,
     runtime: {
-      pythonVersion: "3.14.2",
-      engineVersion: "0.2.0",
+      engineName: "Jungle Rust Engine",
+      engineVersion: "2.0.0",
+      searchVersion: "jungle-search-v3",
       tablebaseLoaded: true,
-      hardAiVersion: "web-hard-v2",
+      capabilities: {
+        wasm: true,
+        scalar: true,
+        simd: false,
+        threads: false,
+        cancellable: true,
+        searchProgress: true,
+        sharedMemory: false,
+        lazySmp: false,
+        workerPoolSize: 1,
+      },
     },
   };
 }

@@ -23,5 +23,23 @@ describe("portable save files", () => {
     expect(() => parseSave("{")).toThrow("not valid JSON");
     expect(() => parseSave(JSON.stringify({ schema: "other", version: 1 }))).toThrow("not supported");
   });
-});
 
+  it("deeply rejects malformed version-one game state before it reaches the Worker", () => {
+    const snapshot = snapshotFixture();
+    const save = createSave(
+      {
+        gameState: snapshot.gameState,
+        difficulty: "medium",
+        humanSide: "blue",
+        engineVersion: "2.0.0",
+      },
+      false,
+    );
+    const malformed = {
+      ...save,
+      gameState: { ...save.gameState, board: save.gameState.board.slice(0, 62) },
+    };
+
+    expect(() => parseSave(JSON.stringify(malformed))).toThrow("invalid game state");
+  });
+});

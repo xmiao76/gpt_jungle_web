@@ -1,9 +1,11 @@
 import { coordinateOf } from "../game/orientation";
 import type { GameSnapshot, LegalTargetsResult } from "../game/types";
+import type { SearchProgressPayload } from "../protocol";
 
 interface SidePanelProps {
   snapshot: GameSnapshot;
   thinking: boolean;
+  searchProgress: SearchProgressPayload | null;
   busy: boolean;
   aiVsAi: boolean;
   aiPaused: boolean;
@@ -31,6 +33,15 @@ export function SidePanel(props: SidePanelProps) {
   const state = snapshot.gameState;
   const terminal = state.result !== "ongoing";
   const computerSide = snapshot.humanSide === "blue" ? "Red" : "Blue";
+  const capabilityLabels = [
+    snapshot.runtime.capabilities.scalar ? "scalar" : null,
+    snapshot.runtime.capabilities.simd ? "SIMD" : null,
+    snapshot.runtime.capabilities.threads ? "threads" : null,
+    snapshot.runtime.capabilities.lazySmp ? "Lazy SMP" : null,
+    snapshot.runtime.capabilities.workerPoolSize > 1
+      ? `${snapshot.runtime.capabilities.workerPoolSize} lanes`
+      : null,
+  ].filter(Boolean).join(", ");
   const status = terminal
     ? `${state.winner?.toUpperCase() ?? "Game"} wins`
     : props.thinking
@@ -65,6 +76,21 @@ export function SidePanel(props: SidePanelProps) {
         <button type="button" onClick={props.onHowToPlay}>How to Play</button>
       </div>
 
+      {props.thinking ? (
+        <section className="info-card ai-card" aria-live="polite">
+          <div className="section-heading">
+            <h2>AI search</h2>
+            <span className="difficulty-pill">{snapshot.difficulty}</span>
+          </div>
+          <dl className="stats-grid">
+            <div><dt>Depth</dt><dd>{props.searchProgress?.depth ?? "-"}</dd></div>
+            <div><dt>Time</dt><dd>{props.searchProgress ? `${props.searchProgress.elapsedMs.toFixed(0)} ms` : "Starting"}</dd></div>
+            <div><dt>Nodes</dt><dd>{props.searchProgress ? formatNumber(props.searchProgress.nodes) : "-"}</dd></div>
+            <div><dt>Score</dt><dd>{props.searchProgress?.score ?? "-"}</dd></div>
+          </dl>
+        </section>
+      ) : null}
+
       {snapshot.aiStats ? (
         <section className="info-card ai-card">
           <div className="section-heading">
@@ -78,6 +104,8 @@ export function SidePanel(props: SidePanelProps) {
             <div><dt>Nodes/s</dt><dd>{formatNumber(snapshot.aiStats.nodesPerSecond)}</dd></div>
             <div><dt>TT hits</dt><dd>{formatNumber(snapshot.aiStats.transpositionHits)}</dd></div>
             <div><dt>TB hits</dt><dd>{formatNumber(snapshot.aiStats.tablebaseHits)}</dd></div>
+            <div><dt>Lanes</dt><dd>{snapshot.aiStats.workerPoolSize ?? 1}</dd></div>
+            <div><dt>Stopped by</dt><dd>{snapshot.aiStats.stopReason}</dd></div>
           </dl>
         </section>
       ) : null}
@@ -103,7 +131,7 @@ export function SidePanel(props: SidePanelProps) {
 
       {props.diagnostics ? (
         <section className="info-card diagnostics-card">
-          <div className="section-heading"><h2>Diagnostics</h2><span>authoritative Python</span></div>
+          <div className="section-heading"><h2>Diagnostics</h2><span>authoritative engine</span></div>
           <dl>
             <div><dt>Revision</dt><dd>{snapshot.revision}</dd></div>
             <div><dt>Selected</dt><dd>{props.selectedDiagnostics ? `${coordinateOf(props.selectedDiagnostics.origin)} (#${props.selectedDiagnostics.origin})` : "None"}</dd></div>
@@ -112,8 +140,11 @@ export function SidePanel(props: SidePanelProps) {
               const kind = target.capture ? "capture" : "move";
               return `${coordinateOf(target.destination)} (${target.jump ? `jump ${kind}` : kind})`;
             }).join(", ") || "-"}</dd></div>
-            <div><dt>Python</dt><dd>{snapshot.runtime.pythonVersion}</dd></div>
-            <div><dt>Hard AI</dt><dd>{snapshot.runtime.hardAiVersion}</dd></div>
+            <div><dt>Engine</dt><dd>{snapshot.runtime.engineName} {snapshot.runtime.engineVersion}</dd></div>
+            <div><dt>Search</dt><dd>{snapshot.runtime.searchVersion}</dd></div>
+            <div><dt>Capabilities</dt><dd>{capabilityLabels || "baseline"}</dd></div>
+            <div><dt>Worker pool</dt><dd>{snapshot.runtime.capabilities.workerPoolSize}</dd></div>
+            <div><dt>Cancellation</dt><dd>{snapshot.runtime.capabilities.cancellable ? "Available" : "Between moves"}</dd></div>
             <div><dt>Tablebase</dt><dd>{snapshot.runtime.tablebaseLoaded ? "Loaded" : "Unavailable"}</dd></div>
           </dl>
         </section>

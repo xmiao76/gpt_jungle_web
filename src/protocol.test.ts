@@ -6,6 +6,20 @@ describe("worker protocol guards", () => {
     const snapshot = snapshotFixture();
     expect(isWorkerRequest({ id: 1, revision: 2, type: "aiMove", payload: { difficulty: "hard" } })).toBe(true);
     expect(isWorkerResponse({ id: 1, revision: 2, type: "state", payload: snapshot })).toBe(true);
+    expect(isWorkerRequest({ id: 2, revision: 2, type: "cancelAi", payload: { searchId: 1 } })).toBe(true);
+    expect(isWorkerResponse({
+      id: 1,
+      revision: 2,
+      type: "searchProgress",
+      payload: {
+        searchId: 1,
+        baseRevision: 2,
+        positionHash: snapshot.positionHash,
+        depth: 4,
+        nodes: 512,
+        elapsedMs: 25,
+      },
+    })).toBe(true);
   });
 
   it("rejects malformed and unknown messages", () => {
@@ -13,6 +27,7 @@ describe("worker protocol guards", () => {
     expect(isWorkerRequest({ id: 1, revision: 0, type: "teleport" })).toBe(false);
     expect(isWorkerRequest({ id: 1, revision: 0, type: "applyMove", payload: { origin: -1, destination: 9 } })).toBe(false);
     expect(isWorkerRequest({ id: 1, revision: 0, type: "undo", payload: { plies: 0 } })).toBe(false);
+    expect(isWorkerRequest({ id: 1, revision: 0, type: "cancelAi", payload: { searchId: 0 } })).toBe(false);
     expect(isWorkerResponse({ id: 1, revision: 0, type: "state" })).toBe(false);
     expect(isWorkerResponse({ id: 1, revision: 0, type: "ready", payload: {} })).toBe(false);
     expect(isWorkerResponse(null)).toBe(false);
@@ -24,7 +39,7 @@ describe("worker protocol guards", () => {
   });
 
   it("matches final response types and payloads to their requests", () => {
-    const snapshot = snapshotFixture();
+    const snapshot = { ...snapshotFixture(), revision: 1 };
     expect(isResponsePayloadForRequest("newGame", { id: 1, revision: 1, type: "state", payload: snapshot })).toBe(true);
     expect(isResponsePayloadForRequest("exportGame", { id: 1, revision: 1, type: "state", payload: snapshot })).toBe(false);
     expect(isResponsePayloadForRequest("legalTargets", {

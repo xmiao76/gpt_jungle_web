@@ -71,18 +71,110 @@ describe("GameWorkerClient", () => {
 
   it("ignores unknown thinking messages and rejects malformed known responses", async () => {
     const onThinking = vi.fn();
+    const onSearchProgress = vi.fn();
     const onFatalError = vi.fn();
-    const client = new GameWorkerClient({ onThinking, onFatalError });
+    const client = new GameWorkerClient({ onThinking, onSearchProgress, onFatalError });
     const worker = MockWorker.instances[0];
-    worker.emitMessage({ id: 999, revision: 0, type: "thinking", payload: { message: "stale" } });
+    const initialization = client.initialize("https://example.test/");
+    worker.emitMessage({ id: 1, revision: 0, type: "ready", payload: snapshotFixture() });
+    await initialization;
+    worker.emitMessage({
+      id: 999,
+      revision: 0,
+      type: "thinking",
+      payload: { searchId: 999, baseRevision: 0, positionHash: "0123456789abcdef", message: "stale" },
+    });
     expect(onThinking).not.toHaveBeenCalled();
 
     const pending = client.request("aiMove", { difficulty: "easy" });
-    worker.emitMessage({ id: 1, revision: 0, type: "thinking", payload: { message: "searching" } });
+    worker.emitMessage({
+      id: 2,
+      revision: 0,
+      type: "thinking",
+      payload: { searchId: 2, baseRevision: 0, positionHash: "0123456789abcdef", message: "searching" },
+    });
     expect(onThinking).toHaveBeenCalledWith(true);
-    worker.emitMessage({ id: 1, revision: 1, type: "state", payload: { board: [] } });
+    worker.emitMessage({
+      id: 2,
+      revision: 0,
+      type: "searchProgress",
+      payload: {
+        searchId: 2,
+        baseRevision: 0,
+        positionHash: "0123456789abcdef",
+        depth: 3,
+        nodes: 128,
+        elapsedMs: 10,
+      },
+    });
+    expect(onSearchProgress).toHaveBeenCalledWith(expect.objectContaining({ depth: 3, nodes: 128 }));
+    worker.emitMessage({ id: 2, revision: 1, type: "state", payload: { board: [] } });
     await expect(pending).rejects.toBeInstanceOf(GameWorkerError);
     expect(onFatalError).toHaveBeenCalledWith(expect.objectContaining({ code: "INVALID_WORKER_RESPONSE" }));
+    client.destroy();
+  });
+
+  it("cancels the active search without restarting the authoritative Worker", async () => {
+    const client = new GameWorkerClient();
+    const worker = MockWorker.instances[0];
+    const initialization = client.initialize("https://example.test/");
+    worker.emitMessage({ id: 1, revision: 0, type: "ready", payload: snapshotFixture() });
+    await initialization;
+    const search = client.request("aiMove", { difficulty: "hard", timeLimitMs: 2_000 });
+    const cancellation = client.cancelAiSearch();
+    expect(worker.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+      id: 3,
+      revision: 0,
+      type: "cancelAi",
+      payload: { searchId: 2 },
+    }));
+
+    worker.emitMessage({
+      id: 2,
+      revision: 0,
+      type: "error",
+      payload: { code: "SEARCH_CANCELLED", message: "AI search cancelled.", searchId: 2 },
+    });
+    worker.emitMessage({ id: 3, revision: 0, type: "state", payload: snapshotFixture() });
+    await expect(search).rejects.toMatchObject({ code: "SEARCH_CANCELLED" });
+    await expect(cancellation).resolves.toEqual(snapshotFixture());
+    expect(worker.terminate).not.toHaveBeenCalled();
+    client.destroy();
+  });
+
+  it("rejects an AI result whose search identity does not match the requested position", async () => {
+    const onFatalError = vi.fn();
+    const client = new GameWorkerClient({ onFatalError });
+    const worker = MockWorker.instances[0];
+    const initialization = client.initialize("https://example.test/");
+    worker.emitMessage({ id: 1, revision: 0, type: "ready", payload: snapshotFixture() });
+    await initialization;
+
+    const search = client.request("aiMove", { difficulty: "hard", timeLimitMs: 2_000 });
+    const result = {
+      ...snapshotFixture(),
+      revision: 1,
+      aiStats: {
+        difficulty: "hard" as const,
+        searchId: 2,
+        baseRevision: 0,
+        positionHash: "fedcba9876543210",
+        depth: 5,
+        nodes: 1_024,
+        nodesPerSecond: 10_000,
+        transpositionHits: 12,
+        tablebaseHits: 0,
+        elapsedMs: 100,
+        score: 24,
+        stopReason: "time" as const,
+        principalVariation: [],
+      },
+    };
+    worker.emitMessage({ id: 2, revision: 1, type: "state", payload: result });
+
+    await expect(search).rejects.toMatchObject({ code: "STALE_SEARCH_RESULT" });
+    expect(onFatalError).toHaveBeenCalledWith(expect.objectContaining({ code: "STALE_SEARCH_RESULT" }));
+    expect(client.currentRevision).toBe(0);
     client.destroy();
   });
 

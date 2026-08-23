@@ -1,4 +1,5 @@
 import type { Difficulty, ExportGameResult, JungleSave, Side } from "./types";
+import { isGameStateData } from "../protocol";
 
 function isDifficulty(value: unknown): value is Difficulty {
   return value === "easy" || value === "medium" || value === "hard";
@@ -37,8 +38,8 @@ export function parseSave(text: string): JungleSave {
   if (candidate.schema !== "gpt-jungle-save" || candidate.version !== 1) {
     throw new Error("This save format or version is not supported.");
   }
-  if (!candidate.gameState || typeof candidate.gameState !== "object") {
-    throw new Error("The save does not contain game state.");
+  if (!isGameStateData(candidate.gameState)) {
+    throw new Error("The save contains invalid game state.");
   }
   if (!candidate.settings || !isDifficulty(candidate.settings.difficulty) || !isSide(candidate.settings.humanSide)) {
     throw new Error("The save contains invalid game settings.");
@@ -63,4 +64,3 @@ export function downloadSave(save: JungleSave): void {
   anchor.remove();
   URL.revokeObjectURL(url);
 }
-

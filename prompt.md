@@ -1,5 +1,10 @@
 # Prompt: GPT_CX_Jungle Web Edition
 
+> **Historical v1 implementation brief.** The Pyodide and source-lock
+> constraints below describe the original port and remain for provenance.
+> Engine v2 supersedes its production runtime with the Rust/Wasm architecture
+> in `docs/engine-v2.md`; the locked Python engine is now a test-only referee.
+
 Act as a senior software architect, game engineer, frontend engineer, and release owner. Plan, implement, test, and deploy a production-quality browser version of the existing Jungle / Dou Shou Qi desktop game.
 
 Do not stop after producing a plan or mockup. Completion requires a working application, automated tests, documentation, and a verified public Cloudflare Pages deployment.

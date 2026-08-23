@@ -1,5 +1,6 @@
 node_modules/
 dist/
+engine/target/
 public/generated/
 .vite/
 coverage/
@@ -11,4 +12,3 @@ __pycache__/
 .venv/
 .wrangler/
 .dev.vars
-

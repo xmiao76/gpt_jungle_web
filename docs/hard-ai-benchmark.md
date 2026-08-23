@@ -1,44 +1,68 @@
-# Hard AI benchmark
+# Hard AI validation
 
-## Scope
+## What counts as strength
 
-`web-hard-v2` is an isolated browser-only Hard-search overlay. It does not modify the manifest-locked desktop source under `python/jungle`, and Easy/Medium still use that source directly. Hard keeps the desktop rule engine, `SearchConfig.hard()`, Zobrist hashing, fixed-size transposition table, bounded quiescence, repetition guidance, and exact two-piece tablebase.
+Engine v2 does not promote on nodes per second, nominal depth, or a fixed list
+of preferred moves. Those remain useful diagnostics, but they are not comparable
+across Python, native Rust, scalar Wasm, SIMD Wasm, classical evaluation, and a
+quantized evaluator.
 
-The overlay improves fixed-time search work through:
+The frozen initial champion is `web-hard-v2` at the same 2,000 ms budget as the
+candidate. The Python champion is exposed through
+`python -m tools.legacy_engine_jsonl`; production does not ship it.
 
-- bitboard-driven, allocation-light legal move generation with exact upstream ordering;
-- precomputed terrain and neighbor data plus integer masks in evaluation;
-- direct packed-move handling in hot paths;
-- lower-overhead batched wall-clock checks while retaining exact node limits;
-- session-scoped transposition storage whose prior-generation entries are used only as safe move-ordering hints;
-- stable den, capture, trap, jump, killer, and history ordering.
+## Fast gates
 
-Random reachable-position tests compare generated moves, make/unmake state, winner state, piece data, and incremental hashes with the locked desktop compact core. The tactical corpus also covers den entry/defense, traps, Rat/Elephant rules, both jump spans and blockers, poisoned captures, den races, and exact tablebase positions.
+Every pull request runs:
 
-## Reproduce
+- authoritative perft and rule matrices;
+- make/unmake, incremental hash, and terminal invariants;
+- exact tablebase samples and artifact fingerprint checks;
+- deterministic fixed-node search tests;
+- a small paired arena smoke corpus;
+- scalar/Wasm protocol, deadline, and browser responsiveness tests.
 
-```powershell
-npm run benchmark:ai -- --samples 3
-```
+The smoke arena catches gross regressions but does not make an Elo claim.
+`npm run benchmark:ai` uses one color-swapped pair at 80 ms per move so it stays
+fast enough for local iteration; the shipping promotion match remains 2,000 ms.
 
-The command fails unless all 20 tactical/endgame positions pass, median browser-overlay throughput is at least 1.20 times the locked legacy Hard search, and the 1,800 ms overlay search completes at least the depth reached by legacy Hard.
+## Champion match
 
-## Recorded result
+A promotion run must supply up to 500 nonterminal, nonduplicate holdout openings
+stratified across early and middle-game plies. Tuning, book construction,
+evaluator training, and parameter selection must not read that corpus.
 
-Measured 2026-08-13 on:
+Each opening produces a pair of games with candidate and champion colors
+reversed. Both engines receive warmed artifacts and the same two-second clock on
+a pinned browser and dedicated host. A crash, illegal move, corrupt result, or
+missed hard deadline is a game loss and a release failure. A game still
+nonterminal after 256 plies scores one half only inside the arena.
 
-- AMD Ryzen 5 PRO 2400G with Radeon Vega Graphics
-- Windows 10 Pro 10.0.19045
-- CPython 3.12.9
-- three 400 ms performance samples and one 1,800 ms comparison per engine
+Matches run in 50-pair batches. Evaluation begins after 200 pairs and ends by
+500 pairs. The paired opening—not an individual game—is the bootstrap sampling
+unit. Promotion requires:
 
-| Gate | Locked legacy Hard | `web-hard-v2` | Result |
-| --- | ---: | ---: | --- |
-| Tactical/endgame corpus | — | 20/20 | Pass |
-| Median nodes/second | 14,347 | 19,217 | 1.339× |
-| Completed depth at 1,800 ms | 5 | 6 | Pass |
-| Overlay elapsed time | — | 1,801 ms | Within browser envelope |
+1. the lower endpoint of the paired two-sided 95% bootstrap interval above 50%
+   (stricter than a one-sided 95% gate);
+2. raw score of at least 45% from each color;
+3. zero illegal moves, crashes, protocol failures, or deadline losses.
 
-A real Pyodide/Worker run in Playwright Chromium 151.0.7922.34 completed the initial-position Hard search at depth 5 with 21,312 nodes in 1,801.5 ms. During that search the main thread sampled 52.0 animation frames/second and opened the How to Play dialog in 82 ms; the automated acceptance floors are 30 frames/second and 750 ms interaction latency.
+An inconclusive result at 500 pairs does not promote. The SIMD/threaded and
+scalar fallback tiers maintain independent champion records.
 
-These measurements establish a focused quality improvement: the overlay preserves the tactical suite and searches one full iterative-deepening level farther than the legacy implementation on the recorded host under the same budget. They are not an Elo claim; wall-clock node counts and completed depth vary with hardware and browser load.
+## Artifacts
+
+Every arena result is emitted as structured JSON with candidate/champion engine
+identities, versioned corpus identity, limits, seed, W/D/L by color, paired
+confidence interval, failure counts, per-game termination, and aggregate search
+telemetry. A full promotion record should add immutable binary/corpus hashes and
+host/browser metadata in its retained CI artifact.
+
+## Legacy comparison
+
+The original 20-position benchmark and initial-position throughput numbers are
+kept as historical data only. Several cases previously returned without search
+or hit the old depth-10 ceiling long before the clock expired, and the old depth
+result varied with host load. Engine v2 removes that ceiling and searches until
+its soft deadline, a proven result, an exact tablebase result, cancellation, or
+the hard stop.

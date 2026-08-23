@@ -70,7 +70,7 @@ describe("App runtime states and preferences", () => {
     });
     expect(screen.getByText("Opening endgame tablebase...")).toBeInTheDocument();
     await makeReady(worker);
-    expect(screen.getAllByText(/Python 3\.14\.2/)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Jungle Rust Engine 2\.0\.0/)[0]).toBeInTheDocument();
   });
 
   it("recovers from a fatal initialization error with a fresh Worker", async () => {
@@ -121,5 +121,46 @@ describe("App runtime states and preferences", () => {
     await user.click(await screen.findByRole("button", { name: "Mute" }));
     await waitFor(() => expect(localStorage.getItem("jungle.muted")).toBe("true"));
     expect(screen.getByRole("button", { name: "Unmute" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("cancels the active search when AI vs AI is stopped", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const worker = MockWorker.instances[0];
+    await makeReady(worker);
+    await user.click(screen.getByRole("button", { name: "Begin game" }));
+    const newGameRequest = latestRequest(worker);
+    const started = { ...snapshotFixture(), revision: 1, difficulty: "hard" as const };
+    await respond(worker, { id: newGameRequest.id, revision: 1, type: "state", payload: started });
+
+    await user.click(screen.getByRole("button", { name: "AI vs AI" }));
+    await waitFor(() => expect(latestRequest(worker).type).toBe("aiMove"));
+    const aiRequest = latestRequest(worker);
+    expect(aiRequest.payload).toMatchObject({ difficulty: "hard", timeLimitMs: 2_000 });
+    await respond(worker, {
+      id: aiRequest.id,
+      revision: 1,
+      type: "thinking",
+      payload: {
+        searchId: aiRequest.id,
+        baseRevision: 1,
+        positionHash: started.positionHash,
+        message: "Computer is thinking...",
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: "Stop AI vs AI" }));
+    await waitFor(() => expect(latestRequest(worker).type).toBe("cancelAi"));
+    const cancelRequest = latestRequest(worker);
+    expect(cancelRequest.payload).toEqual({ searchId: aiRequest.id });
+    await respond(worker, {
+      id: aiRequest.id,
+      revision: 1,
+      type: "error",
+      payload: { code: "SEARCH_CANCELLED", message: "AI search cancelled.", searchId: aiRequest.id },
+    });
+    await respond(worker, { id: cancelRequest.id, revision: 1, type: "state", payload: started });
+    expect(screen.getByRole("button", { name: "Resume AI vs AI" })).toBeVisible();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

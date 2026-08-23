@@ -16,7 +16,7 @@ import type {
   LegalTargetsResult,
   Side,
 } from "./game/types";
-import type { ProgressPayload } from "./protocol";
+import type { ProgressPayload, SearchProgressPayload } from "./protocol";
 import { GameWorkerClient, GameWorkerError } from "./worker/client";
 
 type AppPhase = "loading" | "ready" | "error";
@@ -41,6 +41,10 @@ function errorMessage(reason: unknown): string {
   return String(reason);
 }
 
+function isSearchCancelled(reason: unknown): boolean {
+  return reason instanceof GameWorkerError && reason.code === "SEARCH_CANCELLED";
+}
+
 function cueForSnapshot(snapshot: GameSnapshot): "move" | "capture" | "win" {
   if (snapshot.gameState.result !== "ongoing") return "win";
   return snapshot.appliedMove?.captured ? "capture" : "move";
@@ -59,6 +63,7 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
   const [busy, setBusy] = useState(false);
   const [thinking, setThinking] = useState(false);
+  const [searchProgress, setSearchProgress] = useState<SearchProgressPayload | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [targets, setTargets] = useState<LegalTarget[]>([]);
   const [selectedDiagnostics, setSelectedDiagnostics] = useState<LegalTargetsResult | null>(null);
@@ -81,6 +86,7 @@ export default function App() {
     setSelected(null);
     setTargets([]);
     setSelectedDiagnostics(null);
+    setSearchProgress(null);
     if (playAudio && next.appliedMove) jungleAudio.play(cueForSnapshot(next));
   }, []);
 
@@ -103,7 +109,11 @@ export default function App() {
   useEffect(() => {
     const client = new GameWorkerClient({
       onProgress: setProgress,
-      onThinking: setThinking,
+      onThinking: (value) => {
+        setThinking(value);
+        if (!value) setSearchProgress(null);
+      },
+      onSearchProgress: setSearchProgress,
       onFatalError: (error) => {
         setFatalError(error.message);
         setPhase("error");
@@ -195,11 +205,12 @@ export default function App() {
     const nodeLimit = import.meta.env.VITE_ENABLE_TEST_HOOKS === "true"
       ? Number(new URLSearchParams(window.location.search).get("nodeLimit")) || undefined
       : undefined;
-    void client.request("aiMove", { difficulty: snapshot.difficulty, nodeLimit }).then((next) => {
+    const timeLimitMs = snapshot.difficulty === "hard" ? 2_000 : undefined;
+    void client.request("aiMove", { difficulty: snapshot.difficulty, timeLimitMs, nodeLimit }).then((next) => {
       updateSnapshot(next, true);
     }).catch((reason: unknown) => {
       aiRevisionRef.current = null;
-      setRecoverableError(errorMessage(reason));
+      if (!isSearchCancelled(reason)) setRecoverableError(errorMessage(reason));
     }).finally(() => setThinking(false));
   }, [aiPaused, aiVsAi, busy, hasStarted, newGameOpen, snapshot, thinking, updateSnapshot]);
 
@@ -397,6 +408,12 @@ export default function App() {
     if (aiVsAi) {
       setAiVsAi(false);
       setAiPaused(true);
+      const client = clientRef.current;
+      if (client) {
+        void client.cancelAiSearch().catch((reason: unknown) => {
+          if (!isSearchCancelled(reason)) setRecoverableError(errorMessage(reason));
+        });
+      }
     } else {
       setAiPaused(false);
       setAiVsAi(true);
@@ -407,13 +424,13 @@ export default function App() {
     return (
       <main className="loading-screen">
         <div className="loading-emblem" aria-hidden="true">虎</div>
-        <span className="eyebrow">Python-powered strategy</span>
+        <span className="eyebrow">High-performance strategy</span>
         <h1>Entering the jungle</h1>
         <p aria-live="polite">{progress.message}</p>
         <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent}>
           <span style={{ width: `${progress.percent}%` }} />
         </div>
-        <small>First load includes the Pyodide runtime and exact endgame tablebase.</small>
+        <small>First load includes the local engine and exact endgame tablebase.</small>
       </main>
     );
   }
@@ -450,7 +467,7 @@ export default function App() {
         </div>
         <div className="runtime-badge" title="All game logic runs locally in your browser">
           <span className="runtime-light" />
-          Python {snapshot.runtime.pythonVersion} · local Worker
+          {snapshot.runtime.engineName} {snapshot.runtime.engineVersion} · local Worker
         </div>
       </header>
 
@@ -474,6 +491,7 @@ export default function App() {
         <SidePanel
           snapshot={snapshot}
           thinking={thinking}
+          searchProgress={searchProgress}
           busy={busy}
           aiVsAi={aiVsAi}
           aiPaused={aiPaused}
@@ -494,8 +512,8 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <span>App {packageJson.version} · Engine {snapshot.runtime.engineVersion} · Pyodide 314.0.3 · exact Python rules</span>
-        <span>Source b0bb427 · Hard {snapshot.runtime.hardAiVersion} · browser-only optimization</span>
+        <span>App {packageJson.version} · Engine {snapshot.runtime.engineVersion} · WebAssembly · exact Jungle rules</span>
+        <span>Search {snapshot.runtime.searchVersion} · local browser engine</span>
       </footer>
 
       <input ref={fileInputRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => void onFileSelected(event)} />

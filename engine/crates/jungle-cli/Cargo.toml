@@ -1,0 +1,21 @@
+[package]
+name = "jungle-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+jungle-core = { path = "../jungle-core" }
+jungle-search = { path = "../jungle-search" }
+jungle-tablebase = { path = "../jungle-tablebase" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "jungle-cli"
+path = "src/main.rs"

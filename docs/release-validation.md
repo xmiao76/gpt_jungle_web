@@ -1,74 +1,113 @@
 # Release validation
 
-## Production
+## Engine-v2 status
 
-- Target URL: <https://gpt-jungle.pages.dev>
-- Cloudflare Pages project: `gpt-jungle`
+The Rust/Wasm implementation was validated locally on 2026-08-23
+(America/Los_Angeles) and deployed to the existing production project.
+
+- Project: `gpt-jungle`
 - Production branch: `main`
-- Deployment mode: authenticated Wrangler Direct Upload (static assets only)
-- Deployment state: live and verified
-- Public verification date: 2026-08-13 (America/Los_Angeles)
-- Deployed source commit: `cf38f824a0da50a56a2d25666f50d91752a3518a`
-- Verified preview deployment: <https://0aa6cdc0.gpt-jungle.pages.dev>
-- Verified immutable production deployment: <https://6afd6ed7.gpt-jungle.pages.dev>
-- GitHub CI: [passed in 4m58s](https://github.com/xmiao76/gpt_jungle_web/actions/runs/31774741717)
+- Deployment mode: Wrangler Direct Upload
+- Deployment ID: `a82ba5c7-e9c0-4d58-b0f4-0d489757dc1d`
+- Immutable URL: <https://a82ba5c7.gpt-jungle.pages.dev>
+- Production alias: <https://gpt-jungle.pages.dev>
+- Cloudflare source metadata: `b35fb46` with the working tree marked dirty
+- Public verification date: 2026-08-23 (America/Los_Angeles)
 
-The requested Git integration could not be attached to the exact project through the available credential: Wrangler's OAuth session supported Pages CLI operations, but the source-enabled public API returned 401 and no standalone API-token environment credential existed. Creating the project with Wrangler therefore selected Direct Upload, which Cloudflare does not allow converting to Git integration later. The repository retains a credential-free validation workflow, and releases use the documented manual command.
+Deployment remains static Cloudflare Pages with no Functions, Workers, storage,
+bindings, secrets, remote engine, or telemetry. `npm run deploy` has a
+`predeploy` production build so a test-hook build cannot be uploaded by
+accident.
 
-## Automated release gate
+## Complete local gate
 
-- Local validation date: 2026-08-13
-- Status: passed
-- CPython: 106 passed
-- Vitest / React Testing Library: 29 passed across 10 files
-- Playwright: 17 passed, 16 intentional non-Chromium skips across Chromium, Firefox, and WebKit
-- Public production Playwright: 3 passed against the hook-free Pages deployment
-- Deterministic Python archive: `python-runtime.3d6bfb6025f189ec.zip`, 97,617 bytes
-- Hard AI benchmark: 20/20 tactical/endgame cases, 1.339× median legacy throughput, depth 6 versus depth 5 at equal 1,800 ms budgets
+`npm run test:all` passed and left a normal hook-free production build in
+`dist`. The gate covers:
 
-`npm run test:all` runs, in order:
+- the 18-file frozen Python source manifest and 110 Python reference tests;
+- Rust formatting and Clippy with warnings denied;
+- 98 Rust tests across the canonical rules/session, search, tablebase, Wasm
+  bridge, JSONL server, and subprocess arena;
+- six deterministic artifact/build tests;
+- ESLint, TypeScript compilation, and 42 Vitest/React tests across 13 files;
+- real built-Wasm Playwright flows: 17 passed and 16 intentional
+  non-Chromium skips across Chromium, Firefox, and WebKit;
+- a final scalar/threaded Wasm build, integrity manifest, and production Vite
+  bundle.
 
-1. copied-source manifest and SHA-256 verification;
-2. CPython tests for domain, rules, engine, AI, tablebase, full games, and browser adapter;
-3. ESLint with zero warnings;
-4. Vitest/React Testing Library tests;
-5. a normal production build;
-6. a test-enabled production build and real Pyodide Worker flows in Chromium, Firefox, and WebKit.
-
-The browser suite checks runtime readiness, the initial board, legal selection and a human/AI turn, canonical flip invariance, AI-first behavior, paired undo/redo and JSON persistence, authoritative trap coordinates, selected-piece stacking, main-thread responsiveness during Hard search, a known tablebase hit, an authentic deterministic terminal AI game, and a terminal move/result dialog fixture. The standalone `npm run benchmark:ai` gate compares the isolated `web-hard-v2` overlay with the manifest-locked legacy Hard search.
+The browser suite exercises runtime selection, mandatory tablebase validation,
+canonical rules, human/AI turns, search identity, four-lane Lazy SMP where the
+host supports it, exact deadlines, progress, immediate hard cancellation,
+undo/redo, save-v1 round trips, historyless puzzles, board orientation,
+responsive geometry, terminal UI, and a complete exact-tablebase game.
 
 ## Browser performance record
 
-Benchmark host used during implementation:
+Implementation host:
 
 - CPU: AMD Ryzen 5 PRO 2400G with Radeon Vega Graphics
 - OS: Windows 10 Pro 10.0.19045
 - Browser: Playwright Chromium 151.0.7922.34
-- Position: standard initial setup, AI controlling Blue, Hard profile
-- Search budget: 1,800 ms; acceptance envelope: at most 2,200 ms reported search time
+- Position: standard initial setup, AI controlling Blue
+- Hard budget: 1,950 ms soft / 2,000 ms hard
+- Runtime tier: SIMD/atomics artifact, four independent Lazy-SMP lanes
 
-Observed on 2026-08-13 from the standard initial position:
+Observed final-gate result:
 
-| Depth | Nodes | Nodes/s | TT hits | TB hits | Search time |
+| Depth | Aggregate nodes | Nodes/s | TT hits | TB hits | Search time |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 5 | 21,312 | 11,830 | 9,060 | 0 | 1,801.5 ms |
+| 9 | 2,227,168 | 1,113,473 | 383,384 | 0 | 2,000.2 ms |
 
-The final full-gate run sampled 52.0 animation frames/s during search and opened the interactive How-to-Play dialog in 82 ms. A separate deterministic two-piece fixture asserts nonzero exact tablebase hits; the initial 16-piece position is not tablebase-eligible. Search node counts vary with machine load because the engine correctly searches until the fixed wall-clock budget rather than enforcing a fixed depth. The reproducible CPython comparison and its interpretation are recorded in [Hard AI benchmark](hard-ai-benchmark.md).
+The main thread sustained 54.4 animation frames/s during search, and the
+How-to-Play interaction completed in 76 ms. The initial 16-piece position is
+not tablebase-eligible; a separate two-piece browser fixture verifies nonzero
+exact hits. Node totals vary with host load because each lane searches until
+the wall-clock stop and only completed iterations are eligible for selection.
 
-## Public post-deploy checklist
+## Strength diagnostic
 
-- [x] Root HTML, JavaScript, CSS, PNG art, runtime manifest, and Python archive return successfully.
-- [x] Pyodide modules and WASM load without CSP, CORS, MIME, or 404 failures.
-- [x] Worker reaches ready with Python 3.14.2, web engine 0.2.0, Hard AI `web-hard-v2`, and tablebase loaded.
-- [x] No uncaught console exceptions occur.
-- [x] Human Starts completes a human move and legal AI reply.
-- [x] AI Starts assigns the human Red and completes Blue's move without blocking UI.
-- [x] A complete deterministic two-piece game reaches an authentic engine terminal result.
-- [x] Save/load and paired undo/redo preserve an exact position.
-- [x] Flip preserves canonical state; diagnostics and AI statistics populate.
-- [x] AI-vs-AI completes a game; local regression coverage verifies stop-after-current-search; mute toggles safely.
-- [x] Desktop and 390 px layouts keep the full board and controls usable without horizontal scrolling.
+`npm run benchmark:ai` runs a quick equal-time, color-swapped subprocess pair
+against the frozen `web-hard-v2` reference. The final 80 ms smoke run produced:
 
-The public harness also asserts that production contains no `window.__JUNGLE_TEST__` hook. Its network audit observed hashed JavaScript/CSS/PNG assets, the runtime JSON, content-hashed Python zip, Pyodide WASM, and no response at status 400 or higher.
+- candidate score: 100%;
+- two wins and zero draws or losses;
+- 100% from each color;
+- zero illegal moves, deadline losses, crashes, or protocol failures.
 
-Both the preview and production hostname passed all three public Playwright cases. A direct post-deploy manifest check confirmed that the production alias and immutable deployment serve `python-runtime.3d6bfb6025f189ec.zip` with SHA-256 `3d6bfb6025f189ecd4bac2ab40f3107fb98c7ea031d4c04ac437ce7cbbe189a9`.
+This one-pair smoke result is not an Elo estimate or promotion. A release that
+claims a new champion still requires an untuned holdout corpus, at least 200
+pairs, the paired confidence/color gates, and zero strict failures documented
+in [Hard AI validation](hard-ai-benchmark.md).
+
+## Artifact record
+
+- Runtime manifest schema: `gpt-jungle-engine-runtime` v2
+- Engine ABI: `jungle-wasm-v2`
+- Rules fingerprint:
+  `bd5e29e5baf50114aa5ce62f7bfaee325a4aabc4ba69e7b983f3ba79c00a0c3a`
+- Runtime manifest SHA-256:
+  `292b3746573a4d0827b81bfaff2b2871f801599a1c569e65520bc5071aebf302`
+- Published engine/tablebase bytes: 1,929,193
+- Mandatory two-piece tablebase SHA-256:
+  `a32b620d22d1735ef4f2a13b8d1388c07ad45151060f638c2434db988f97ece5`
+- Frozen Python reference commit:
+  `b0bb427458a686aa0ed10770bda50f9311a7845b`
+
+Generated runtime assets are ignored build outputs. The production bundle
+contains the Rust/Wasm variants, exact tablebase, and runtime manifest; the old
+Pyodide archive is removed during every engine build.
+
+## Post-deploy verification
+
+The three hook-free public Playwright scenarios passed against both the
+immutable URL and production alias. The deployed manifest is 2,747 bytes and
+matches the local SHA-256 recorded above at both endpoints.
+
+- [x] COOP/COEP/CORP headers produce the expected capability tier.
+- [x] Manifest, selected Wasm module, and mandatory tablebase return without
+      integrity, CORS, MIME, or status errors.
+- [x] No production `window.__JUNGLE_TEST__` hook exists.
+- [x] Human-first and AI-first games complete legal replies.
+- [x] Save/load, paired undo/redo, orientation, diagnostics, and mute work.
+- [x] A deterministic two-piece game reaches an authentic terminal result.
+- [x] Desktop and 390 px layouts remain usable without horizontal scrolling.

@@ -1,51 +1,109 @@
 # Architecture
 
-## Trust boundary
+## Trust and state ownership
 
-The browser has one game authority: `BrowserGameSession` in `python/browser_bridge.py`, running under Pyodide in `src/worker/game.worker.ts`. React never derives legal moves, capture eligibility, ranks, jumps, turns, winners, or terminal reasons. Its terrain constants are presentation metadata only.
+The browser has one game authority: a `WasmGameSession` in the authority module
+Worker. React never derives turns, legal moves, captures, effective ranks,
+jumps, winners, or terminal reasons. Its terrain data is presentation metadata.
 
-The retained source packages are `jungle/domain`, `jungle/rules`, `jungle/engine`, and `jungle/ai`, including `ai/data/two_piece_v1.jgtb`. They match desktop commit `b0bb427458a686aa0ed10770bda50f9311a7845b` byte-for-byte according to `python/source-manifest.json`. Desktop Tkinter/controller/packaging modules are excluded.
-
-`python/web_ai` is a clearly separated browser-only Hard-search overlay, currently identified as `web-hard-v2`. Easy and Medium continue to dispatch to the locked desktop implementation. Hard reuses the same rules, `GameState`, search configuration, Zobrist scheme, transposition-table implementation, and exact tablebase while replacing only its compact position/evaluation/search hot path. Random reachable-position parity tests compare legal move order, make/unmake state, and hashes against the locked compact core. The desktop repository and manifest-locked payload remain untouched.
-
-## Runtime sequence
-
-1. React creates a module Worker and sends `init` with the current static asset base URL.
-2. The Worker loads pinned Pyodide 314.0.3 from jsDelivr.
-3. It fetches the same-origin runtime manifest and content-hashed Python zip.
-4. SHA-256 and byte size are checked with Web Crypto before extraction to `/runtime`.
-5. `/runtime` is prepended to `sys.path`; the Worker imports `browser_bridge` and creates one session.
-6. Session construction loads and verifies the exact tablebase through the unchanged `importlib.resources` path and creates one session-scoped `web-hard-v2` search owner.
-7. Only then does the Worker publish a ready snapshot.
-
-The loading UI reports runtime, engine, session/tablebase, and ready stages. A failed initialization destroys and recreates the Worker when Retry is selected.
-
-## Protocol and concurrency
-
-`src/protocol.ts` defines discriminated request/response envelopes plus runtime guards. Every message carries a monotonically increasing request ID and session revision. The client tracks pending calls, rejects malformed envelopes, rejects state replies from stale revisions, and distinguishes fatal Worker initialization errors from recoverable command errors.
-
-The Python search is intentionally synchronous inside the Worker; no main-thread frame is blocked. React disables state-mutating input while search is active. AI-vs-AI submits exactly one move at a time, updates the screen, yields to the browser, and decides whether to submit another. Stop therefore takes effect between searches. Undo/redo uses the Python `Game` stacks; paired human/AI undo records how many plies were removed so redo restores that exact line.
-
-## State ownership
+The authority and native tooling share the `jungle-core` crate. It owns the
+compact position, custom rules, legal move generation, checked move application,
+outcomes, incremental hash, move log, undo/redo, and version-1 DTO validation.
+There is no second optimized rule implementation for search to drift from.
 
 | Concern | Owner |
 | --- | --- |
-| Board, side to move, history, legal moves, result | Python session |
-| AI profile, search, diagnostics, tablebase | Python session; web-only overlay for Hard |
-| Undo/redo stacks and save-state validation | Python session |
-| Selection and legal-target rendering | React, from Worker response |
-| Dialogs, audio, responsive layout, animation | React |
-| Board orientation | React presentation state |
-| AI-vs-AI scheduling | React, one authoritative request at a time |
+| Position, rules, legal moves, result | Rust `jungle-core` |
+| Undo/redo, import/export, revision | authority Worker session |
+| Search, evaluation, TT, diagnostics | disposable search Worker(s) |
+| Tablebase cache and artifact manifest | engine manifest + browser artifact cache |
+| Selection, dialogs, animation, audio | React |
+| Orientation | React presentation state |
+| AI-vs-AI scheduling | React, one authoritative commit at a time |
 
-Canonical board indices are invariant. In normal orientation display index `v` is canonical `v`; flipped orientation maps to `62 - v`. Input, focus, pieces, labels, highlights, and animations use the same mapping. Flipping never alters ownership, turn, history, or Python state.
+Canonical board indices are always Red-at-top/Blue-at-bottom. Flipped display
+index `v` maps to canonical index `62 - v`; flipping cannot change game state.
 
-## Build and hosting
+## Search isolation
 
-The deterministic archive builder first verifies the retained desktop sources, then packages them with `browser_bridge.py` and `python/web_ai`. It sorts paths, fixes zip timestamps/permissions, omits transient files, and emits `public/generated/python-runtime.<hash>.zip` plus a small runtime manifest. Two builds from identical sources produce identical bytes and names. Vite uses relative asset URLs and emits a static `dist`; `public/_headers` makes hashed assets immutable while keeping HTML and the runtime manifest revalidatable.
+An AI request snapshots the compact position and records a search ID, session
+revision, and Zobrist key. Search runs away from the authority event loop so it
+can be cancelled without destroying the session. A result may be committed only
+when all three identifiers still match and the returned move is legal in the
+authoritative position.
 
-Cloudflare Pages serves that directory with no server-side code. Pyodide runtime files come from the pinned official jsDelivr package; the game engine, bridge, art, archive, and tablebase are same-origin static assets.
+Hard search has a 1.95-second soft deadline and a 2.00-second atomic stop. It
+returns the last fully completed iterative-deepening result. Search-path cycles
+have a neutral internal value, carry a history-dependent marker, and do not
+produce reusable transposition bounds or a gameplay draw result.
+
+The fast artifact is selected only when cross-origin isolation, shared memory,
+and SIMD are available. The coordinator runs independent deterministic
+Lazy-SMP Web Workers (no shared-TT claim), capped at four and always leaving one
+reported hardware thread for the UI. Runtime detection falls back to one scalar
+lane without changing rules, saves, or the public protocol.
+
+## Runtime sequence
+
+1. React creates the authority Worker and sends `init` with the static asset URL.
+2. The Worker fetches the no-cache engine runtime manifest.
+3. It verifies the manifest schema, engine ABI, rules fingerprint, artifact size,
+   and SHA-256 metadata.
+4. Capability checks select the threaded/SIMD or scalar Wasm module.
+5. The coordinator initializes the supported search lanes; every lane and the
+   authority validate the mandatory exact two-piece tablebase.
+6. The Worker publishes a ready snapshot with the actual lane count and
+   language-neutral capabilities.
+7. Optional complete tablebase groups are prefetched asynchronously into the
+   250 MiB IndexedDB LRU. Only the current material group, capped at 32 MiB per
+   auxiliary lane, may become resident; lane zero never waits for it.
+
+Initialization failure destroys the Worker. Retry creates a new Worker and
+authority instance.
+
+## Protocol
+
+The existing request commands remain stable: `init`, `newGame`, `legalTargets`,
+`applyMove`, `aiMove`, `undo`, `redo`, `importGame`, and `exportGame`. Envelopes
+retain monotonically increasing IDs and revisions. Additive search metadata
+includes the search ID, base revision, position hash, progress, stop reason,
+principal variation, node counters, TT statistics, tablebase hits, participating
+lanes, and runtime capability tier.
+
+The UI-facing `GameSnapshot`, canonical move objects, difficulties, and version-1
+save wrapper remain language-neutral. Search or runtime objects never cross the
+boundary.
+
+## Artifacts and build
+
+The Rust workspace produces native tools plus scalar and threaded web-target
+Wasm packages. A deterministic builder copies these and exact tablebase assets
+under `public/generated`, rejects any individual artifact at or above the Pages
+file limit, and emits a content-hashed manifest with:
+
+- engine ABI and rules fingerprint;
+- artifact URL, byte size, SHA-256, and kind;
+- complete material-signature metadata for tablebase shards;
+- measured probe value used to select shards under the cache budget.
+
+Cloudflare Pages remains a static Direct Upload project. `_headers` provides
+COOP, COEP, CORP, no-cache HTML/manifest responses, and immutable generated
+assets. There are no Functions, remote engine endpoints, bindings, or secrets.
 
 ## Save validation
 
-The UI first checks JSON syntax and the versioned wrapper. Python then constructs a candidate `GameState`, validates board length and enums, duplicate animal identities, water/den occupancy, alternating move history, turn parity, replay consistency, and terminal evaluation. The live session is replaced only after all checks succeed. Imports clear undo/redo stacks by constructing a new `Game`, as the portable format stores game state but not command stacks.
+Version-1 saves are parsed into checked DTOs. The engine validates the board,
+piece uniqueness, terrain occupancy, turn/history consistency, legal replay,
+and the first terminal result before constructing a session. Redundant stored
+winner/result text cannot override the canonical derived outcome. Valid
+historyless positions remain supported for puzzles; moves made after such an
+import retain their live UI log but serialize historyless because save v1 has no
+field for a nonstandard history origin. Imported sessions begin with empty
+undo/redo stacks as before.
+
+## Reference boundary
+
+The manifest-locked Python engine remains development-only as the frozen
+`web-hard-v2` champion and differential referee. `tools/legacy_engine_jsonl.py`
+exposes it through the same language-neutral arena protocol. Python and Pyodide
+are not packaged into production engine artifacts.

@@ -1,0 +1,13 @@
+[package]
+name = "jungle-tablebase"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+jungle-core = { path = "../jungle-core" }
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.10.9"
+thiserror.workspace = true

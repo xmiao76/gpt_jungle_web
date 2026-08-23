@@ -10,6 +10,7 @@ export type PieceKind =
   | "LION"
   | "ELEPHANT";
 export type ResultType = "ongoing" | "den_entry" | "capture_all" | "no_legal_moves";
+export type SearchStopReason = "completed" | "time" | "nodes" | "cancelled" | "terminal";
 
 export interface PieceData {
   side: Side;
@@ -44,6 +45,12 @@ export interface HistoryEntry extends MoveData {
 
 export interface AiStats {
   difficulty: Difficulty;
+  searchId: number;
+  laneId?: number;
+  workerPoolSize?: number;
+  participatingLaneIds?: number[];
+  baseRevision: number;
+  positionHash: string;
   depth: number;
   nodes: number;
   nodesPerSecond: number;
@@ -51,18 +58,36 @@ export interface AiStats {
   tablebaseHits: number;
   elapsedMs: number;
   score: number;
+  stopReason: SearchStopReason;
   principalVariation: MoveData[];
 }
 
+export interface EngineCapabilities {
+  wasm: boolean;
+  scalar: boolean;
+  simd: boolean;
+  threads: boolean;
+  cancellable: boolean;
+  searchProgress: boolean;
+  sharedMemory: boolean;
+  lazySmp: boolean;
+  workerPoolSize: number;
+}
+
 export interface RuntimeInfo {
-  pythonVersion: string;
+  engineName: string;
   engineVersion: string;
+  searchVersion: string;
   tablebaseLoaded: boolean;
-  hardAiVersion: string;
+  capabilities: EngineCapabilities;
+  /** Transitional aliases emitted by the Wasm bridge for older consumers. */
+  pythonVersion?: string;
+  hardAiVersion?: string;
 }
 
 export interface GameSnapshot {
   revision: number;
+  positionHash: string;
   gameState: GameStateData;
   history: HistoryEntry[];
   lastMove: HistoryEntry | null;

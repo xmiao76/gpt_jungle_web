@@ -1,109 +1,137 @@
-# GPT Jungle — Web Edition
+# GPT Jungle — Rust/Wasm edition
 
-Play Jungle / Dou Shou Qi against the original Python engine in a browser. The verified production game is live at **[gpt-jungle.pages.dev](https://gpt-jungle.pages.dev)** on Cloudflare Pages. Deployment status and the dated public checklist are recorded in [release validation](docs/release-validation.md).
+Play Jungle / Dou Shou Qi against a local, strength-oriented engine in the
+browser. React owns presentation; one authoritative Rust rules engine and a
+two-second PVS search run in WebAssembly Workers. The site remains private and
+static: there is no account, telemetry, remote game service, or server-side AI.
 
-This is a real browser port of [GPT_CX_Jungle](https://github.com/xmiao76/gpt_cx_jungle), not a JavaScript rewrite of its rules. The manifest-locked Python domain, rules, engine, AI baseline, and exact two-piece tablebase run locally in Pyodide 314.0.3 inside a module Web Worker. A browser-only Hard-search overlay improves throughput without changing the authoritative rules or the desktop repository. Cloudflare serves static files only.
-
-## Visual overview
-
-The responsive game screen places a 7×9 illustrated board beside turn status, controls, AI search diagnostics, and move history. On narrow screens the panel moves below the complete board. Every square is a keyboard-operable button; pieces retain readable English labels in both board orientations. The UI includes selection and capture markers, last-move feedback, animation, result and rules dialogs, synthesized audio, reduced-motion support, and staged runtime loading.
+The public site is [gpt-jungle.pages.dev](https://gpt-jungle.pages.dev). A
+deployment can lag the repository until the release gate and Direct Upload are
+run.
 
 ## Play
 
-Blue always moves first. Choose **Human starts** to control Blue or **AI starts** to control Red, independently of board orientation. Select an animal and then a highlighted legal destination.
+Blue moves first. Choose **Human starts** to play Blue or **AI starts** to play
+Red. Select an animal, then one of its highlighted legal destinations.
 
-Win by entering the opponent's den, capturing every opposing animal, or leaving the opponent without a legal move. This engine intentionally has no gameplay repetition or no-capture draw. The complete engine-specific rules—including Rat/Elephant, river, jump, trap, and den behavior—are available from **How to Play** and the [authoritative source ruleset](https://github.com/xmiao76/gpt_cx_jungle/blob/b0bb427458a686aa0ed10770bda50f9311a7845b/docs/ruleset.md).
+Win by entering the opposing den, capturing every opposing animal, or leaving
+the opponent without a legal move. This project intentionally preserves its
+original variant:
 
-- **Easy / Medium** retain the desktop search implementations with 250 / 750 ms browser budgets. **Hard** uses the `web-hard-v2` overlay with the same 1,800 ms budget, compact alpha-beta search, persistent move-ordering hints, allocation-light position handling, and the exact two-piece tablebase.
-- **Undo** normally removes a completed human/AI pair; **Redo** restores those exact plies without asking the AI to search again.
-- **Save / Load** downloads and reads portable JSON files. **Flip Board** changes display mapping only.
-- **Diagnostics** exposes authoritative targets, effective rank, runtime data, and search statistics. **AI vs AI** yields after each move and stops after an in-progress search completes.
-- **Mute** controls local Web Audio cues. No account, telemetry, or remote game storage is used.
+- Dog is rank 3 and Wolf rank 4.
+- Lion can jump either river span; Tiger can jump only the two-square span.
+- Rats, Elephants, water, traps, and dens retain the original engine behavior.
+- Repetition and no-capture sequences are not adjudicated as gameplay draws.
+
+The UI retains Easy, Medium, and Hard profiles at 250 ms, 750 ms, and 2,000 ms.
+Hard uses the strongest available Wasm path; capability detection selects a
+scalar single-thread fallback when SIMD, threads, or cross-origin isolation are
+unavailable.
+
+Undo/redo, portable JSON saves, AI-vs-AI, board flipping, keyboard play,
+responsive layout, audio, reduced motion, diagnostics, and version-1 save
+imports remain supported.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    UI[React presentation] <-->|typed IDs + revisions| A[Authority Worker]
+    A --> C[Rust/Wasm canonical rules + session]
+    A <-->|position hash + search ID| S[Disposable search Worker pool]
+    S --> E[PVS search + tuned evaluation]
+    E --> T[Exact tablebase shards]
+    N[Native Rust tools] --> B[Tablebase generation + artifact packaging]
+    N --> G[Paired champion arena]
+    B --> M[Content-hashed artifact manifest]
+    P[Cloudflare Pages static assets] --> UI
+    P --> M
+```
+
+The same Rust move generator, state transitions, terminal evaluation, hashing,
+and serialization are used by browser play, search, tablebase tooling, and the
+native referee. Search results carry their base revision and position hash; the
+authority rejects stale results and revalidates every move before mutation.
+
+Optional exact tablebase artifacts are integrity checked and cached in a 250 MiB
+IndexedDB LRU. Fetching never extends the move clock. Cloudflare Pages serves
+content-hashed shards as static files and applies COOP/COEP headers for the
+shared-memory fast path.
+
+See [engine v2](docs/engine-v2.md) and [architecture](docs/architecture.md).
 
 ## Local development
 
-Prerequisites are Node.js 22 (the repository pins `22.16.0`) and Python 3.12 or newer. Pyodide is fetched from the official jsDelivr distribution on first browser load.
+Prerequisites:
+
+- Node.js 22.16 or newer (`.node-version` is authoritative)
+- Rust 1.94.1 with `wasm32-unknown-unknown` (`rust-toolchain.toml` is authoritative)
+- wasm-pack 0.15.0
+- Python 3.12+ and pytest only for the frozen v1 referee/regression suite
+- Playwright browsers for end-to-end validation
 
 ```powershell
-git clone https://github.com/xmiao76/gpt_jungle_web.git
-cd gpt_jungle_web
 npm ci
 python -m pip install "pytest>=9.0.3"
 npx playwright install chromium firefox webkit
 npm run dev
 ```
 
-Commands:
+Important commands:
 
 ```powershell
-npm run dev             # build the Python payload and start Vite
-npm run build:python    # verify source hashes and make the deterministic archive
-npm run build           # Python archive, TypeScript check, production Vite bundle
-npm run preview         # serve dist locally
-npm run lint            # ESLint with zero warnings
-npm test                # Vitest and React Testing Library
-npm run test:python     # copied engine and browser-adapter tests under CPython
-npm run benchmark:ai    # tactical corpus plus legacy-versus-web Hard throughput gate
-npm run test:e2e        # real Worker/Pyodide tests in Chromium, Firefox, and WebKit
-npm run test:public     # hook-free smoke and complete-game checks against production
-npm run test:all        # source audit, all tests, lint, and production builds
-npm run deploy          # deploy an already validated dist to Cloudflare Pages
+npm run build:engine     # deterministic Rust/Wasm engine + artifact manifest
+npm run test:rust        # Rust workspace tests
+npm run test:python      # frozen reference/referee regressions
+npm test                 # TypeScript, protocol, and React tests
+npm run test:e2e         # real browser Worker/Wasm flows
+npm run benchmark:ai     # equal-time paired smoke and strength diagnostics
+npm run test:all         # complete release gate
+npm run build            # production static bundle
+npm run deploy           # validated Cloudflare Pages Direct Upload
 ```
 
-For a manual release:
+Native workspace commands can be run directly:
 
 ```powershell
-npm run test:all
-npm run build
-npx wrangler pages deploy dist --project-name gpt-jungle --branch main
+cargo test --manifest-path engine/Cargo.toml --workspace
+cargo run --manifest-path engine/Cargo.toml -p jungle-cli -- serve
+python -m tools.legacy_engine_jsonl
 ```
-
-The live `gpt-jungle` project uses authenticated Cloudflare Pages Direct Upload through `npm run deploy`; repository CI validates every pushed source revision but does not hold deployment credentials. The account's Wrangler OAuth login could create/deploy the project, while the public source-enabled API required a separate API-token credential that was not present. [Cloudflare makes a project's Direct Upload versus Git-integration mode immutable](https://developers.cloudflare.com/pages/get-started/direct-upload/), so changing this existing project to automatic Git deployment would require creating a differently named Pages project. Build settings remain `npm run build`, output `dist`, and Node 22.
-
-There are no Pages Functions, Worker handlers, bindings, secrets, databases, KV namespaces, Durable Objects, or R2 buckets. The Pages project name is derived from `gpt_jungle_web` by removing the generic `_web` suffix and converting underscores to hyphens: `gpt-jungle`.
-
-## Architecture
-
-```mermaid
-flowchart LR
-    UI[React main thread<br/>DOM board and presentation] <-->|typed ID + revision protocol| W[Module Web Worker]
-    W --> P[Pyodide 314.0.3<br/>Python 3.14]
-    P --> E[Manifest-locked Python<br/>domain · rules · engine · AI]
-    P --> H[Browser-only Hard overlay<br/>web-hard-v2]
-    E --> T[Exact two-piece<br/>tablebase]
-    H --> E
-    B[Deterministic build script] --> Z[Hashed Python archive]
-    Z --> W
-    C[Cloudflare Pages<br/>static files only] --> UI
-    C --> Z
-```
-
-The main thread owns presentation state only: selection, dialogs, animation, sound, orientation, and AI-vs-AI scheduling. The Worker owns one authoritative Python session. Runtime-validated messages carry request IDs and revisions, and stale state responses are rejected. Canonical indices are always Red-at-top/Blue-at-bottom; flipped display index `v` maps to canonical index `62 - v`, without mutating game state.
-
-During `npm run build`, `scripts/build-python-archive.mjs` verifies every reused desktop Python/tablebase file against `python/source-manifest.json`, then packages those locked sources with the separately identified browser bridge and `python/web_ai` overlay into a byte-reproducible, content-hashed zip. This preserves the package layout needed by `importlib.resources` to find the tablebase. See [architecture](docs/architecture.md) for the protocol and release boundaries.
 
 ## Saves and compatibility
 
-Save files use schema `gpt-jungle-save`, version `1`, and include the current web engine version (`0.2.0`), timestamp, serializable `GameState`, difficulty, human side, and orientation. Import validates the wrapper in TypeScript and the board, enums, move history, turn, terrain occupancy, and terminal state in Python before replacing the live session. A loaded game intentionally begins with empty undo/redo stacks, matching the desktop format limitation; version-1 files from engine `0.1.0` remain accepted.
+Saves retain schema `gpt-jungle-save`, version `1`, canonical board indices,
+difficulty, human side, orientation, and validated game state. Engine v2 rejects
+out-of-range coordinates, contradictory outcomes, duplicate animals, illegal
+histories, and moves after the first terminal result. Valid historyless puzzle
+positions remain importable. Undo/redo and search caches are intentionally not
+serialized.
 
-## Browser support and limitations
+## Strength and release policy
 
-The production bundle is exercised with current Playwright Chromium, Firefox, and WebKit desktop engines. The layout supports touch-sized controls and narrow mobile viewports. Current limitations:
+The old `web-hard-v2` engine at the same 2,000 ms budget is the first frozen
+champion. A candidate is promoted only through paired holdout games with colors
+reversed, no illegal moves/crashes/deadline losses, at least 45% from each color,
+and the lower endpoint of a paired two-sided 95% interval above 50%. Inconclusive candidates
+are not promoted. Threaded/SIMD and broad fallback builds have separate ladders.
 
-- The first visit requires network access for the pinned Pyodide runtime and may take several seconds; there is no service worker or offline mode.
-- AI search is synchronous inside its Worker. The page stays responsive, but AI-vs-AI Stop and other state changes take effect after the current search.
-- Save files do not preserve undo/redo stacks.
-- Synthesized sound starts only after a browser-accepted user gesture and fails silently where Web Audio is unavailable.
+Perft, rule matrices, make/unmake/hash checks,
+tablebase audits, fixed-node search tests, save migrations, cross-browser flows,
+and UI responsiveness remain hard correctness gates. Nodes per second and
+nominal depth are diagnostics, not strength claims.
+
+## Hosting
+
+The application remains a Cloudflare Pages Direct Upload project with no Pages
+Functions, Workers, bindings, secrets, databases, KV, Durable Objects, or R2.
+Build output is `dist`; generated engine artifacts are created under
+`public/generated` and are not committed. Releases continue to use the existing
+`gpt-jungle` project and can roll back to a previous immutable Pages deployment.
 
 ## Provenance
 
-| Component | Model | Reasoning effort | Code agent | Version / commit |
-| --- | --- | --- | --- | --- |
-| Source desktop engine | GPT 5.6-Sol | Ultra | Codex | Engine 0.1.0 · [`b0bb427`](https://github.com/xmiao76/gpt_cx_jungle/commit/b0bb427458a686aa0ed10770bda50f9311a7845b) |
-| Web port and Hard overlay | GPT-5 | Not exposed by the implementation runtime | Codex | Frontend 1.0.0 · web engine 0.2.0 · `web-hard-v2` |
-
-Runtime details are also visible in the application: Pyodide `314.0.3`, detected Python `3.14.x`, web engine `0.2.0`, and Hard AI `web-hard-v2`. The unchanged source engine remains version `0.1.0`; its provenance and SHA-256 hashes are locked in [`python/source-manifest.json`](python/source-manifest.json).
-
-## Verification
-
-The copied CPython suite, source manifest, web-overlay parity tests, unit/component suite, production build, cross-browser real-Pyodide flows, exact tablebase probe, and deterministic authentic terminal game are automated. The [Hard AI benchmark](docs/hard-ai-benchmark.md) records the tactical and throughput gates; performance measurements and the dated deployment checklist live in [release validation](docs/release-validation.md). CI runs the entire suite on every pull request and `main` push.
+Production engine v2 is authored in this repository and identified by its Rust
+crate version, engine ABI, rules fingerprint, evaluator ID, and content hashes.
+The manifest-locked Python engine remains test-only as the frozen referee and
+initial champion; it is not included in the production browser payload.

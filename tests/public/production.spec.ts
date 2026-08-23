@@ -40,7 +40,7 @@ function twoPieceSave(): JungleSave {
   return {
     schema: "gpt-jungle-save",
     version: 1,
-    engineVersion: "0.1.0",
+    engineVersion: "2.0.0",
     createdAt: "2026-08-13T00:00:00.000Z",
     gameState: {
       board,
@@ -59,9 +59,11 @@ test("production assets and human-vs-AI controls work without test hooks", async
   await waitForReady(page);
   await expect(page.getByRole("gridcell")).toHaveCount(63);
   await expect(page.locator(".piece")).toHaveCount(16);
-  await expect(page.getByText(/Python 3\.14/).first()).toBeVisible();
   expect(await page.evaluate(() => "__JUNGLE_TEST__" in window)).toBe(false);
   await begin(page, "Easy", "Human starts");
+  await page.getByRole("button", { name: "Diagnostics" }).click();
+  await expect(page.locator(".diagnostics-card")).toContainText("Jungle Rust Engine 2.0.0");
+  await expect(page.locator(".diagnostics-card")).toContainText("TablebaseLoaded");
 
   await page.locator('[data-canonical-index="42"]').click();
   await page.locator('[data-canonical-index="35"]').click();
@@ -89,7 +91,6 @@ test("production assets and human-vs-AI controls work without test hooks", async
 
   await page.getByRole("button", { name: "Flip Board" }).click();
   await expect(page.locator('[data-display-index="20"]')).toHaveAttribute("data-canonical-index", "42");
-  await page.getByRole("button", { name: "Diagnostics" }).click();
   await expect(page.locator(".diagnostics-card")).toContainText("Loaded");
   await page.getByRole("button", { name: "Mute" }).click();
   await expect(page.getByRole("button", { name: "Unmute" })).toHaveAttribute("aria-pressed", "true");
@@ -99,13 +100,13 @@ test("production assets and human-vs-AI controls work without test hooks", async
   expect(width.content).toBeLessThanOrEqual(width.viewport);
   expect(audit.errors).toEqual([]);
 
-  const urls = [...audit.responses];
-  expect(urls.some((url) => /\/assets\/.*\.js(?:\?|$)/.test(url))).toBe(true);
-  expect(urls.some((url) => /\/assets\/.*\.css(?:\?|$)/.test(url))).toBe(true);
-  expect(urls.some((url) => /\.png(?:\?|$)/.test(url))).toBe(true);
-  expect(urls.some((url) => url.endsWith("/generated/python-runtime.json"))).toBe(true);
-  expect(urls.some((url) => /python-runtime\.[a-f0-9]+\.zip$/.test(url))).toBe(true);
-  expect(urls.some((url) => /\.wasm(?:\?|$)/.test(url))).toBe(true);
+  const paths = [...audit.responses].map((url) => new URL(url).pathname);
+  expect(paths.some((path) => /\/assets\/.*\.js$/.test(path))).toBe(true);
+  expect(paths.some((path) => /\/assets\/.*\.css$/.test(path))).toBe(true);
+  expect(paths.some((path) => /\.png$/.test(path))).toBe(true);
+  expect(paths.some((path) => path.endsWith("/generated/engine-runtime-manifest.json"))).toBe(true);
+  expect(paths.some((path) => /\/generated\/jungle-wasm\/[^/]+\/jungle_wasm_bg\.wasm$/.test(path))).toBe(true);
+  expect(paths.some((path) => path.endsWith("/generated/tablebase/two_piece_v1.jgtb"))).toBe(true);
 });
 
 test("production AI-first remains responsive and assigns the human Red", async ({ page }) => {
@@ -138,4 +139,3 @@ test("production observes a complete authentic tablebase game", async ({ page })
   expect(await page.locator(".move-history li:not(.empty-history)").count()).toBeGreaterThan(0);
   expect(audit.errors).toEqual([]);
 });
-

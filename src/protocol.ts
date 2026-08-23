@@ -4,6 +4,7 @@ import type {
   GameSnapshot,
   GameStateData,
   LegalTargetsResult,
+  MoveData,
   Side,
 } from "./game/types";
 
@@ -13,6 +14,7 @@ export type WorkerRequestType =
   | "legalTargets"
   | "applyMove"
   | "aiMove"
+  | "cancelAi"
   | "undo"
   | "redo"
   | "importGame"
@@ -25,7 +27,14 @@ export interface WorkerRequest {
   payload?: unknown;
 }
 
-export type WorkerResponseType = "progress" | "ready" | "state" | "thinking" | "export" | "error";
+export type WorkerResponseType =
+  | "progress"
+  | "ready"
+  | "state"
+  | "thinking"
+  | "searchProgress"
+  | "export"
+  | "error";
 
 export interface WorkerResponse {
   id: number;
@@ -38,6 +47,7 @@ export interface WorkerErrorPayload {
   code: string;
   message: string;
   fatal?: boolean;
+  searchId?: number;
 }
 
 export interface ProgressPayload {
@@ -46,12 +56,32 @@ export interface ProgressPayload {
   message: string;
 }
 
+export interface SearchIdentity {
+  searchId: number;
+  baseRevision: number;
+  positionHash: string;
+}
+
+export interface ThinkingPayload extends SearchIdentity {
+  message: string;
+}
+
+export interface SearchProgressPayload extends SearchIdentity {
+  depth: number;
+  nodes: number;
+  elapsedMs: number;
+  score?: number;
+  principalVariation?: MoveData[];
+  message?: string;
+}
+
 export interface RequestPayloads {
   init: { assetBaseUrl: string };
   newGame: { difficulty: Difficulty; humanSide: Side };
   legalTargets: { origin: number };
   applyMove: { origin: number; destination: number };
   aiMove: { difficulty: Difficulty; timeLimitMs?: number; nodeLimit?: number };
+  cancelAi: { searchId?: number };
   undo: { plies: number };
   redo: { plies: number };
   importGame: { gameState: GameStateData; difficulty: Difficulty; humanSide: Side };
@@ -64,6 +94,7 @@ export interface ResponsePayloads {
   legalTargets: LegalTargetsResult;
   applyMove: GameSnapshot;
   aiMove: GameSnapshot;
+  cancelAi: GameSnapshot;
   undo: GameSnapshot;
   redo: GameSnapshot;
   importGame: GameSnapshot;
@@ -76,12 +107,21 @@ const REQUEST_TYPES = new Set<WorkerRequestType>([
   "legalTargets",
   "applyMove",
   "aiMove",
+  "cancelAi",
   "undo",
   "redo",
   "importGame",
   "exportGame",
 ]);
-const RESPONSE_TYPES = new Set<WorkerResponseType>(["progress", "ready", "state", "thinking", "export", "error"]);
+const RESPONSE_TYPES = new Set<WorkerResponseType>([
+  "progress",
+  "ready",
+  "state",
+  "thinking",
+  "searchProgress",
+  "export",
+  "error",
+]);
 const DIFFICULTIES = new Set<Difficulty>(["easy", "medium", "hard"]);
 const SIDES = new Set<Side>(["blue", "red"]);
 const PIECE_KINDS = new Set([
@@ -95,6 +135,7 @@ const PIECE_KINDS = new Set([
   "ELEPHANT",
 ]);
 const RESULTS = new Set(["ongoing", "den_entry", "capture_all", "no_legal_moves"]);
+const SEARCH_STOP_REASONS = new Set(["completed", "time", "nodes", "cancelled", "terminal"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -102,6 +143,41 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isBoardIndex(value: unknown): value is number {
   return Number.isInteger(value) && Number(value) >= 0 && Number(value) < 63;
+}
+
+function isPositionHash(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{16}$/.test(value);
+}
+
+function isSearchIdentity(value: unknown): value is SearchIdentity {
+  return (
+    isRecord(value) &&
+    Number.isInteger(value.searchId) &&
+    Number(value.searchId) > 0 &&
+    Number.isInteger(value.baseRevision) &&
+    Number(value.baseRevision) >= 0 &&
+    isPositionHash(value.positionHash)
+  );
+}
+
+function isThinkingPayload(value: unknown): value is ThinkingPayload {
+  return isSearchIdentity(value) && isRecord(value) && typeof value.message === "string";
+}
+
+export function isSearchProgressPayload(value: unknown): value is SearchProgressPayload {
+  return (
+    isSearchIdentity(value) &&
+    isRecord(value) &&
+    Number.isFinite(value.depth) &&
+    Number.isFinite(value.nodes) &&
+    Number.isFinite(value.elapsedMs) &&
+    (value.score === undefined || Number.isFinite(value.score)) &&
+    (value.message === undefined || typeof value.message === "string") &&
+    (value.principalVariation === undefined || (
+      Array.isArray(value.principalVariation) &&
+      value.principalVariation.every(isMove)
+    ))
+  );
 }
 
 function isDifficulty(value: unknown): value is Difficulty {
@@ -140,7 +216,7 @@ function isHistoryEntry(value: unknown): boolean {
   );
 }
 
-function isGameState(value: unknown): value is GameStateData {
+export function isGameStateData(value: unknown): value is GameStateData {
   if (!isRecord(value) || !Array.isArray(value.board) || value.board.length !== 63) return false;
   return (
     value.board.every((piece) => piece === null || isPiece(piece)) &&
@@ -181,7 +257,7 @@ function isLegalTargetsResult(value: unknown): value is LegalTargetsResult {
 function isExportGameResult(value: unknown): value is ExportGameResult {
   return (
     isRecord(value) &&
-    isGameState(value.gameState) &&
+    isGameStateData(value.gameState) &&
     isDifficulty(value.difficulty) &&
     isSide(value.humanSide) &&
     typeof value.engineVersion === "string"
@@ -205,11 +281,13 @@ function isRequestPayload(type: WorkerRequestType, payload: unknown): boolean {
         (payload.timeLimitMs === undefined || (Number.isInteger(payload.timeLimitMs) && Number(payload.timeLimitMs) > 0)) &&
         (payload.nodeLimit === undefined || (Number.isInteger(payload.nodeLimit) && Number(payload.nodeLimit) > 0))
       );
+    case "cancelAi":
+      return payload.searchId === undefined || (Number.isInteger(payload.searchId) && Number(payload.searchId) > 0);
     case "undo":
     case "redo":
       return Number.isInteger(payload.plies) && Number(payload.plies) > 0;
     case "importGame":
-      return isGameState(payload.gameState) && isDifficulty(payload.difficulty) && isSide(payload.humanSide);
+      return isGameStateData(payload.gameState) && isDifficulty(payload.difficulty) && isSide(payload.humanSide);
     case "exportGame":
       return Object.keys(payload).length === 0;
   }
@@ -245,14 +323,18 @@ export function isWorkerResponse(value: unknown): value is WorkerResponse {
     );
   }
   if (value.type === "thinking") {
-    return isRecord(value.payload) && typeof value.payload.message === "string";
+    return isThinkingPayload(value.payload);
+  }
+  if (value.type === "searchProgress") {
+    return isSearchProgressPayload(value.payload);
   }
   if (value.type === "error") {
     return (
       isRecord(value.payload) &&
       typeof value.payload.code === "string" &&
       typeof value.payload.message === "string" &&
-      (value.payload.fatal === undefined || typeof value.payload.fatal === "boolean")
+      (value.payload.fatal === undefined || typeof value.payload.fatal === "boolean") &&
+      (value.payload.searchId === undefined || (Number.isInteger(value.payload.searchId) && Number(value.payload.searchId) > 0))
     );
   }
   if (value.type === "ready") return isGameSnapshot(value.payload);
@@ -261,9 +343,10 @@ export function isWorkerResponse(value: unknown): value is WorkerResponse {
 }
 
 export function isGameSnapshot(value: unknown): value is GameSnapshot {
-  if (!isRecord(value) || !isGameState(value.gameState) || !Array.isArray(value.history)) return false;
+  if (!isRecord(value) || !isGameStateData(value.gameState) || !Array.isArray(value.history)) return false;
   return (
     Number.isInteger(value.revision) &&
+    isPositionHash(value.positionHash) &&
     value.history.every(isHistoryEntry) &&
     (value.lastMove === null || isHistoryEntry(value.lastMove)) &&
     typeof value.canUndo === "boolean" &&
@@ -273,6 +356,21 @@ export function isGameSnapshot(value: unknown): value is GameSnapshot {
     (value.aiStats === null || (
       isRecord(value.aiStats) &&
       isDifficulty(value.aiStats.difficulty) &&
+      Number.isInteger(value.aiStats.searchId) &&
+      Number(value.aiStats.searchId) > 0 &&
+      (value.aiStats.laneId === undefined || (
+        Number.isSafeInteger(value.aiStats.laneId) && Number(value.aiStats.laneId) >= 0
+      )) &&
+      (value.aiStats.workerPoolSize === undefined || (
+        Number.isSafeInteger(value.aiStats.workerPoolSize) && Number(value.aiStats.workerPoolSize) >= 1
+      )) &&
+      (value.aiStats.participatingLaneIds === undefined || (
+        Array.isArray(value.aiStats.participatingLaneIds) &&
+        value.aiStats.participatingLaneIds.every((laneId) => Number.isSafeInteger(laneId) && Number(laneId) >= 0)
+      )) &&
+      Number.isInteger(value.aiStats.baseRevision) &&
+      Number(value.aiStats.baseRevision) >= 0 &&
+      isPositionHash(value.aiStats.positionHash) &&
       Number.isFinite(value.aiStats.depth) &&
       Number.isFinite(value.aiStats.nodes) &&
       Number.isFinite(value.aiStats.nodesPerSecond) &&
@@ -280,14 +378,29 @@ export function isGameSnapshot(value: unknown): value is GameSnapshot {
       Number.isFinite(value.aiStats.tablebaseHits) &&
       Number.isFinite(value.aiStats.elapsedMs) &&
       Number.isFinite(value.aiStats.score) &&
+      typeof value.aiStats.stopReason === "string" &&
+      SEARCH_STOP_REASONS.has(value.aiStats.stopReason) &&
       Array.isArray(value.aiStats.principalVariation) &&
       value.aiStats.principalVariation.every(isMove)
     )) &&
     isRecord(value.runtime) &&
-    typeof value.runtime.pythonVersion === "string" &&
+    typeof value.runtime.engineName === "string" &&
     typeof value.runtime.engineVersion === "string" &&
+    typeof value.runtime.searchVersion === "string" &&
     typeof value.runtime.tablebaseLoaded === "boolean" &&
-    typeof value.runtime.hardAiVersion === "string" &&
+    isRecord(value.runtime.capabilities) &&
+    typeof value.runtime.capabilities.wasm === "boolean" &&
+    typeof value.runtime.capabilities.scalar === "boolean" &&
+    typeof value.runtime.capabilities.simd === "boolean" &&
+    typeof value.runtime.capabilities.threads === "boolean" &&
+    typeof value.runtime.capabilities.cancellable === "boolean" &&
+    typeof value.runtime.capabilities.searchProgress === "boolean" &&
+    typeof value.runtime.capabilities.sharedMemory === "boolean" &&
+    typeof value.runtime.capabilities.lazySmp === "boolean" &&
+    Number.isSafeInteger(value.runtime.capabilities.workerPoolSize) &&
+    Number(value.runtime.capabilities.workerPoolSize) >= 1 &&
+    (value.runtime.pythonVersion === undefined || typeof value.runtime.pythonVersion === "string") &&
+    (value.runtime.hardAiVersion === undefined || typeof value.runtime.hardAiVersion === "string") &&
     (value.appliedMove === undefined || isHistoryEntry(value.appliedMove)) &&
     (value.appliedPlies === undefined || Number.isInteger(value.appliedPlies))
   );
@@ -297,12 +410,20 @@ export function isResponsePayloadForRequest(type: WorkerRequestType, response: W
   if (response.type === "error") return true;
   switch (type) {
     case "init":
-      return response.type === "ready" && isGameSnapshot(response.payload);
+      return (
+        response.type === "ready" &&
+        isGameSnapshot(response.payload) &&
+        response.payload.revision === response.revision
+      );
     case "legalTargets":
       return response.type === "state" && isLegalTargetsResult(response.payload);
     case "exportGame":
       return response.type === "export" && isExportGameResult(response.payload);
     default:
-      return response.type === "state" && isGameSnapshot(response.payload);
+      return (
+        response.type === "state" &&
+        isGameSnapshot(response.payload) &&
+        response.payload.revision === response.revision
+      );
   }
 }

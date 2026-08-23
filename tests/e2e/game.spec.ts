@@ -2,14 +2,20 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import type { Difficulty, JungleSave, PieceData, Side } from "../../src/game/types";
 
-async function waitForReady(page: Page): Promise<void> {
-  await page.goto("/");
+async function waitForReady(page: Page, url = "/"): Promise<void> {
+  await page.goto(url);
   await expect(page.getByRole("heading", { name: "Entering the jungle" })).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", /^(?:[3-9]|[1-9]\d|100)$/);
   await expect(page.getByRole("dialog", { name: "Start a new expedition" })).toBeVisible({ timeout: 90_000 });
 }
 
-async function startGame(page: Page, difficulty: Difficulty = "easy", starter: "human" | "ai" = "human") {
-  await waitForReady(page);
+async function startGame(
+  page: Page,
+  difficulty: Difficulty = "easy",
+  starter: "human" | "ai" = "human",
+  url = "/",
+) {
+  await waitForReady(page, url);
   await page.getByText(difficulty[0].toUpperCase() + difficulty.slice(1), { exact: true }).click();
   await page.getByText(starter === "human" ? "Human starts" : "AI starts", { exact: true }).click();
   await page.getByRole("button", { name: "Begin game" }).click();
@@ -40,7 +46,7 @@ function positionSave(
   return {
     schema: "gpt-jungle-save",
     version: 1,
-    engineVersion: "0.1.0",
+    engineVersion: "2.0.0",
     createdAt: "2026-08-13T00:00:00.000Z",
     gameState: {
       board,
@@ -54,11 +60,29 @@ function positionSave(
   };
 }
 
-test("loads the real Pyodide engine and completes a human/AI turn", async ({ page }) => {
+test("loads the real Rust/Wasm engine and completes a human/AI turn", async ({ page }) => {
+  const assetResponses = new Set<string>();
+  page.on("response", (response) => assetResponses.add(response.url()));
   await startGame(page, "easy", "human");
   await expect(page.getByRole("gridcell")).toHaveCount(63);
-  await expect(page.getByText(/Python 3\.14/).first()).toBeVisible();
-  expect(await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot()?.gameState.board.filter(Boolean).length)).toBe(16);
+  await expect(page.getByText(/Jungle Rust Engine 2\.0\.0/).first()).toBeVisible();
+  const initial = await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot());
+  expect(initial?.gameState.board.filter(Boolean)).toHaveLength(16);
+  expect(initial?.positionHash).toMatch(/^[0-9a-f]{16}$/);
+  expect(initial?.runtime).toMatchObject({
+    engineName: "Jungle Rust Engine",
+    engineVersion: "2.0.0",
+    tablebaseLoaded: true,
+    capabilities: {
+      wasm: true,
+      scalar: true,
+      cancellable: true,
+      searchProgress: true,
+    },
+  });
+  const assetPaths = [...assetResponses].map((url) => new URL(url).pathname);
+  expect(assetPaths.some((path) => path.endsWith("/generated/engine-runtime-manifest.json"))).toBe(true);
+  expect(assetPaths.some((path) => /\/generated\/jungle-wasm\/[^/]+\/jungle_wasm_bg\.wasm$/.test(path))).toBe(true);
 
   await page.locator('[data-canonical-index="42"]').click();
   await expect(page.locator('[data-feedback-index="35"] .move-marker')).toBeVisible();
@@ -101,10 +125,17 @@ test("terrain coordinates and selected-piece layers stay visually correct", asyn
 test("an AI move is legal for the exact revision it searched", async ({ page, browserName }) => {
   test.skip(browserName !== "chromium", "The exhaustive legal-move comparison runs once in Chromium.");
   await startGame(page, "easy", "human");
+  const before = await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot());
   const result = await page.evaluate(async () => window.__JUNGLE_TEST__?.runVerifiedAiMove(100));
   const applied = result?.snapshot.appliedMove;
   expect(result?.snapshot.revision).toBe((result?.beforeRevision ?? -1) + 1);
   expect(result?.legalMoves).toContainEqual({ origin: applied?.origin, destination: applied?.destination });
+  expect(result?.snapshot.aiStats).toMatchObject({
+    baseRevision: before?.revision,
+    positionHash: before?.positionHash,
+  });
+  expect(result?.snapshot.aiStats?.searchId).toBeGreaterThan(0);
+  expect(result?.snapshot.aiStats?.nodes).toBeGreaterThan(0);
 });
 
 test("board flip changes display only", async ({ page }) => {
@@ -183,6 +214,15 @@ test("Hard AI stays within its response budget while the main thread remains int
   await page.getByText("AI starts", { exact: true }).click();
   await page.getByRole("button", { name: "Begin game" }).click();
   await expect(page.getByText(/AI is thinking/)).toBeVisible();
+  const liveSearch = page.locator(".ai-card").filter({ has: page.getByRole("heading", { name: "AI search" }) });
+  await expect(liveSearch).toBeVisible();
+  await expect.poll(async () => {
+    const value = await liveSearch
+      .locator("dt", { hasText: "Depth" })
+      .locator("xpath=following-sibling::dd")
+      .textContent();
+    return Number(value);
+  }).toBeGreaterThan(0);
   const searchFramesPerSecond = await sampleFrameRate(page);
   const interactionStarted = Date.now();
   await page.getByRole("button", { name: "How to Play" }).click();
@@ -194,11 +234,19 @@ test("Hard AI stays within its response budget while the main thread remains int
     { timeout: 30_000 },
   ).toBe(1);
   const stats = await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot()?.aiStats);
+  const capabilities = await page.evaluate(
+    () => window.__JUNGLE_TEST__?.getSnapshot()?.runtime.capabilities,
+  );
   console.info(
     `[hard-ai-benchmark] Chromium ${browser.version()} idle-fps=${idleFramesPerSecond.toFixed(1)} ` +
     `search-fps=${searchFramesPerSecond.toFixed(1)} interaction-ms=${interactionMs} ${JSON.stringify(stats)}`,
   );
   expect(stats?.difficulty).toBe("hard");
+  expect(stats?.depth).toBeGreaterThan(0);
+  expect(stats?.nodes).toBeGreaterThan(0);
+  expect(stats?.workerPoolSize).toBe(capabilities?.workerPoolSize);
+  if (capabilities?.lazySmp) expect(stats?.workerPoolSize).toBeGreaterThan(1);
+  expect(["completed", "time", "nodes"]).toContain(stats?.stopReason);
   expect(stats?.elapsedMs).toBeLessThanOrEqual(2_200);
   expect(searchFramesPerSecond).toBeGreaterThanOrEqual(30);
   expect(interactionMs).toBeLessThan(750);
@@ -220,25 +268,30 @@ test("the complete board and primary controls fit a narrow viewport", async ({ p
   await expect(page.getByRole("button", { name: "New Game", exact: true })).toBeVisible();
 });
 
-test("AI vs AI stops after the active search and resumes only on request", async ({ page, browserName }) => {
+test("AI vs AI immediately cancels the active search without committing a late move", async ({ page, browserName }) => {
   test.skip(browserName !== "chromium", "The AI scheduling regression runs once in Chromium.");
-  await startGame(page, "easy", "human");
+  await startGame(page, "hard", "human", "/?nodeLimit=2147483647");
   await page.getByRole("button", { name: "AI vs AI", exact: true }).click();
   await expect(page.getByText(/AI is thinking/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "AI search" })).toBeVisible();
+  const beforeCancel = await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot());
   await page.getByRole("button", { name: "Stop AI vs AI" }).click();
-  const historyAtStop = (await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot()?.history.length)) ?? 0;
   await expect(page.getByRole("button", { name: "Resume AI vs AI" })).toBeVisible();
-  await expect(page.getByText(/AI is thinking/)).toBeHidden({ timeout: 30_000 });
-  const stoppedHistory = (await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot()?.history.length)) ?? 0;
-  expect(stoppedHistory).toBeGreaterThanOrEqual(historyAtStop);
-  expect(stoppedHistory).toBeLessThanOrEqual(historyAtStop + 1);
-  await page.waitForTimeout(800);
-  expect(await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot()?.history.length)).toBe(stoppedHistory);
+  await expect(page.getByText(/AI is thinking/)).toBeHidden({ timeout: 1_500 });
+  const cancelled = await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot());
+  expect(cancelled?.revision).toBe(beforeCancel?.revision);
+  expect(cancelled?.positionHash).toBe(beforeCancel?.positionHash);
+  expect(cancelled?.history).toEqual(beforeCancel?.history);
+  await page.waitForTimeout(500);
+  const stable = await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot());
+  expect(stable?.revision).toBe(cancelled?.revision);
+  expect(stable?.positionHash).toBe(cancelled?.positionHash);
+  expect(stable?.history).toEqual(cancelled?.history);
   await page.getByRole("button", { name: "Resume AI vs AI" }).click();
   await expect.poll(
     async () => (await page.evaluate(() => window.__JUNGLE_TEST__?.getSnapshot()?.history.length)) ?? 0,
     { timeout: 30_000 },
-  ).toBeGreaterThan(stoppedHistory);
+  ).toBeGreaterThan(cancelled?.history.length ?? 0);
   await page.getByRole("button", { name: "Stop AI vs AI" }).click();
 });
 
