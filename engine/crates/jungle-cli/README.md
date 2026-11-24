@@ -17,7 +17,7 @@ commands are:
 {"type":"close","id":7}
 ```
 
-`setPosition` uses the same validated `GameStateDto` object as save files; its
+`setPosition` uses the validated native `GameStateDto` object; its
 63-square payload is omitted from the compact example above.
 
 `chooseMove` does not mutate the game. `applyMove` is the only advancing
@@ -26,7 +26,7 @@ command, and coordinates are independently reconstructed and checked by
 history data persist across moves within one game. Invalid positions, illegal
 moves, node overruns, and deadline overruns are structured error responses.
 
-The public arena always launches candidate and champion as JSONL subprocesses:
+The native benchmarking arena launches candidate and champion as JSONL subprocesses:
 
 ```powershell
 jungle-cli arena `

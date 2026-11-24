@@ -13,11 +13,12 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-/generated/jungle-wasm/*
-  Cache-Control: public, max-age=31536000, immutable
+/conformance/vendor/*
+  Cache-Control: public, max-age=86400
 
-/generated/tablebase/*
-  Cache-Control: public, max-age=31536000, immutable
+/conformance/metadata.json
+  Cache-Control: no-cache
 
-/generated/engine-runtime-manifest.json
+/*.wasm
+  Content-Type: application/wasm
   Cache-Control: no-cache

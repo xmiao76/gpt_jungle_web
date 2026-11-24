@@ -204,6 +204,17 @@ fn play_game(
     }
 
     for ply in 0..BENCHMARK_PLY_CAP {
+        if let Outcome::Draw { reason } = referee.outcome() {
+            return Ok(GameRecord {
+                opening_id: opening_id.to_owned(),
+                candidate_side,
+                candidate_outcome: CandidateOutcome::Draw,
+                plies: ply,
+                termination: GameTermination::RulesDraw { reason },
+                candidate_search,
+                champion_search,
+            });
+        }
         if let Outcome::Win { winner, reason } = referee.outcome() {
             return Ok(rules_record(
                 opening_id,
@@ -543,6 +554,9 @@ pub enum EngineRole {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum GameTermination {
+    RulesDraw {
+        reason: jungle_core::DrawReason,
+    },
     RulesWin {
         winner: Side,
         reason: WinReason,

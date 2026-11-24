@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap");
-
 :root {
   color-scheme: dark;
   font-family: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -1185,3 +1183,17 @@ input:focus-visible {
     transition-duration: 0.001ms !important;
   }
 }
+
+.setup-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+.setup-row label { display:grid; gap:.4rem; color:var(--muted); font-size:.85rem; }
+.setup-row select { appearance:auto; background:#163d31; border:1px solid var(--line); color:var(--cream); font:inherit; font-size:1rem; padding:.65rem; border-radius:.5rem; }
+.release-info { display:grid; gap:.5rem; font-size:.82rem; line-height:1.45; color:var(--muted); }
+.modal-content > .release-info { border-top:1px solid var(--line); padding-top:1rem; margin-top:1.2rem; }
+.release-info strong {font-size:1.02rem; color:var(--cream);}
+.release-info strong small {color:var(--gold);font-weight:500;}
+.release-info a,.release-info summary {color:var(--gold);cursor:pointer;}
+.release-info button {justify-self:start;}
+.release-info dd {margin:0 0 .5rem;overflow-wrap:anywhere;font-family:monospace;}
+.release-info dt {color:var(--cream);}
+.piece--captured {z-index:3; animation:captured 250ms ease-out forwards; pointer-events:none;}
+@keyframes captured {to{opacity:0;scale:.82;}}

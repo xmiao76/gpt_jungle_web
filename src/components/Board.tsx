@@ -1,11 +1,21 @@
 import type { CSSProperties, KeyboardEvent } from "react";
 import { boardBackgroundAsset, pieceAsset, terrainAsset } from "../assets";
-import { coordinateOf, displayToCanonical, canonicalToDisplay, columnOf, rowOf } from "../game/orientation";
+import {
+  coordinateOf,
+  displayToCanonical,
+  canonicalToDisplay,
+  columnOf,
+  rowOf,
+} from "../game/orientation";
 import { terrainAt, terrainLabel } from "../game/terrain";
-import { PIECE_NAMES, type GameSnapshot, type LegalTarget } from "../game/types";
+import { PIECE_NAMES, type LegalTarget, type PieceData } from "../game/types";
 
 interface BoardProps {
-  snapshot: GameSnapshot;
+  snapshot: {
+    gameState: { board: (PieceData | null)[] };
+    lastMove: { origin: number; destination: number } | null;
+  };
+  captured?: { piece: PieceData; square: number; rev: number } | null;
   flipped: boolean;
   selected: number | null;
   targets: LegalTarget[];
@@ -29,15 +39,29 @@ function onGridKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
   else if (event.key === "End") next = row * 7 + 6;
   else return;
   event.preventDefault();
-  const nextButton = event.currentTarget.querySelector<HTMLButtonElement>(`[data-display-index="${next}"]`);
+  const nextButton = event.currentTarget.querySelector<HTMLButtonElement>(
+    `[data-display-index="${next}"]`,
+  );
   nextButton?.focus();
 }
 
-export function Board({ snapshot, flipped, selected, targets, disabled, onSquare }: BoardProps) {
-  const targetMap = new Map(targets.map((target) => [target.destination, target]));
+export function Board({
+  snapshot,
+  captured,
+  flipped,
+  selected,
+  targets,
+  disabled,
+  onSquare,
+}: BoardProps) {
+  const targetMap = new Map(
+    targets.map((target) => [target.destination, target]),
+  );
   const lastOrigin = snapshot.lastMove?.origin;
   const lastDestination = snapshot.lastMove?.destination;
-  const frameStyle = { "--board-background-image": `url(${boardBackgroundAsset})` } as CSSProperties;
+  const frameStyle = {
+    "--board-background-image": `url(${boardBackgroundAsset})`,
+  } as CSSProperties;
 
   return (
     <div className="board-frame" style={frameStyle}>
@@ -56,16 +80,26 @@ export function Board({ snapshot, flipped, selected, targets, disabled, onSquare
             const classes = [
               "board-square",
               selected === canonicalIndex ? "board-square--selected" : "",
-              target ? (target.capture ? "board-square--capture" : "board-square--legal") : "",
+              target
+                ? target.capture
+                  ? "board-square--capture"
+                  : "board-square--legal"
+                : "",
               lastOrigin === canonicalIndex ? "board-square--last-origin" : "",
-              lastDestination === canonicalIndex ? "board-square--last-destination" : "",
-            ].filter(Boolean).join(" ");
+              lastDestination === canonicalIndex
+                ? "board-square--last-destination"
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
             const label = [
               coordinateOf(canonicalIndex),
               terrainLabel(terrain),
               piece ? `${piece.side} ${PIECE_NAMES[piece.kind]}` : "empty",
               target ? (target.capture ? "legal capture" : "legal move") : "",
-            ].filter(Boolean).join(", ");
+            ]
+              .filter(Boolean)
+              .join(", ");
             return (
               <button
                 key={displayIndex}
@@ -80,13 +114,36 @@ export function Board({ snapshot, flipped, selected, targets, disabled, onSquare
                 onClick={() => onSquare(canonicalIndex)}
                 style={{ backgroundImage: `url(${terrainAsset(terrain)})` }}
               >
-                {terrain !== "land" ? <span className="terrain-caption">{terrainLabel(terrain)}</span> : null}
+                {terrain !== "land" ? (
+                  <span className="terrain-caption">
+                    {terrainLabel(terrain)}
+                  </span>
+                ) : null}
               </button>
             );
           })}
         </div>
 
         <div className="piece-layer">
+          {captured && (
+            <div
+              key={captured.rev}
+              aria-hidden="true"
+              className="piece piece--captured"
+              style={
+                {
+                  "--piece-row": rowOf(
+                    canonicalToDisplay(captured.square, flipped),
+                  ),
+                  "--piece-column": columnOf(
+                    canonicalToDisplay(captured.square, flipped),
+                  ),
+                } as CSSProperties
+              }
+            >
+              <img src={pieceAsset(captured.piece)} alt="" />
+            </div>
+          )}
           {snapshot.gameState.board.map((piece, canonicalIndex) => {
             if (!piece) return null;
             const displayIndex = canonicalToDisplay(canonicalIndex, flipped);
@@ -120,12 +177,26 @@ export function Board({ snapshot, flipped, selected, targets, disabled, onSquare
             const classes = [
               "feedback-square",
               selected === canonicalIndex ? "feedback-square--selected" : "",
-              target ? (target.capture ? "feedback-square--capture" : "feedback-square--legal") : "",
-              lastOrigin === canonicalIndex ? "feedback-square--last-origin" : "",
-              lastDestination === canonicalIndex ? "feedback-square--last-destination" : "",
-            ].filter(Boolean).join(" ");
+              target
+                ? target.capture
+                  ? "feedback-square--capture"
+                  : "feedback-square--legal"
+                : "",
+              lastOrigin === canonicalIndex
+                ? "feedback-square--last-origin"
+                : "",
+              lastDestination === canonicalIndex
+                ? "feedback-square--last-destination"
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
             return (
-              <span className={classes} data-feedback-index={canonicalIndex} key={displayIndex}>
+              <span
+                className={classes}
+                data-feedback-index={canonicalIndex}
+                key={displayIndex}
+              >
                 {target ? <span className="move-marker" /> : null}
               </span>
             );
@@ -133,8 +204,8 @@ export function Board({ snapshot, flipped, selected, targets, disabled, onSquare
         </div>
       </div>
       <div className="board-orientation" aria-hidden="true">
-        <span>{flipped ? "Blue view" : "Red side"}</span>
-        <span>{flipped ? "Red side" : "Blue view"}</span>
+        <span>{flipped ? "Red side" : "Blue side"}</span>
+        <span>{flipped ? "Blue side" : "Red side"}</span>
       </div>
     </div>
   );

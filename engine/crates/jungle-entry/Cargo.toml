@@ -1,0 +1,24 @@
+[package]
+name = "jungle-entry"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[lib]
+crate-type = ["cdylib", "rlib"]
+[features]
+arena = ["dep:wit-bindgen"]
+fixture = ["arena"]
+web = ["dep:wasm-bindgen", "dep:js-sys"]
+[dependencies]
+jungle-core = { path = "../jungle-core" }
+jungle-search = { path = "../jungle-search" }
+serde.workspace = true
+serde_json.workspace = true
+wit-bindgen = { version = "=0.61.1", optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+js-sys = { workspace = true, optional = true }
+font8x8 = "=0.3.1"
+[build-dependencies]
+image = { version = "=0.25.9", default-features = false, features = ["png"] }
+sha2 = "=0.10.9"
+serde_json.workspace = true

@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   base: "./",
+  publicDir: false,
+  worker: { format: "iife" },
   plugins: [react()],
   server: {
     headers: {
@@ -19,14 +21,16 @@ export default defineConfig({
     },
   },
   build: {
+    assetsInlineLimit: 10000000,
+    modulePreload: { polyfill: false },
     target: "es2022",
-    sourcemap: process.env.VITE_ENABLE_TEST_HOOKS === "true",
+    sourcemap: false,
   },
   test: {
     environment: "jsdom",
     globals: true,
     setupFiles: "./src/test/setup.ts",
-    exclude: ["tests/e2e/**", "tests/public/**", "node_modules/**", "dist/**"],
+    exclude: ["node_modules/**", "dist/**", "generated/**", "engine/target/**"],
     css: true,
   },
 });

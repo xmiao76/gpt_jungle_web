@@ -1,0 +1,31 @@
+{
+  "hash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+  "bytes": 452804,
+  "info": {
+    "title": "GPT-6 · Codex",
+    "gameVersion": "2.0.0",
+    "model": "GPT-6",
+    "codeAgent": "Codex",
+    "modelPlatform": "official",
+    "githubUrl": "https://github.com/xmiao76/gpt_jungle_web",
+    "engineVersion": "2.0.0",
+    "runtime": "Rust / WebAssembly",
+    "rulesId": "desktop-jungle-v2",
+    "rulesDigest": "a457bbc009e975a9eafe5ff1f8fa40ca2548f2a689b121c8c4ed99dd0f3fdc57"
+  },
+  "times": {
+    "transpileMs": 579.2985,
+    "smokeMs": 133.09860000000003,
+    "nodes1000": 11.738299999999981,
+    "nodes5000": 15.273200000000088,
+    "nodes20000": 45.266000000000076,
+    "nodes100000": 300.8679000000002,
+    "nodes500000": 1514.8899
+  },
+  "portableCases": 23,
+  "frameHashes": [
+    "4a7ea9a3c31cbdeb0aebfbb0977d611ce121544d0b8171249c1703a8b33e7f85",
+    "669d9e6745a3b791602f45580db20b04bc28df70d92cad25396382224ad28b06"
+  ],
+  "fixtureHash": "247dd64df2f249209672d5fec72d15d47c4c1d0e51aa805a9c8c87ed97e9cdac"
+}

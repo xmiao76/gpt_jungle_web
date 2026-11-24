@@ -161,22 +161,38 @@ pub enum WinReason {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DrawReason {
+    Repetition,
+    NoCapture,
+}
+impl DrawReason {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Repetition => "repetition",
+            Self::NoCapture => "no-capture",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum Outcome {
     Ongoing,
+    Draw { reason: DrawReason },
     Win { winner: Side, reason: WinReason },
 }
 
 impl Outcome {
     #[must_use]
     pub const fn is_over(self) -> bool {
-        matches!(self, Self::Win { .. })
+        !matches!(self, Self::Ongoing)
     }
 
     #[must_use]
     pub const fn winner(self) -> Option<Side> {
         match self {
-            Self::Ongoing => None,
+            Self::Ongoing | Self::Draw { .. } => None,
             Self::Win { winner, .. } => Some(winner),
         }
     }
@@ -184,7 +200,7 @@ impl Outcome {
     #[must_use]
     pub const fn win_reason(self) -> Option<WinReason> {
         match self {
-            Self::Ongoing => None,
+            Self::Ongoing | Self::Draw { .. } => None,
             Self::Win { reason, .. } => Some(reason),
         }
     }
@@ -193,6 +209,7 @@ impl Outcome {
     pub fn reason_text(self) -> String {
         match self {
             Self::Ongoing => String::new(),
+            Self::Draw { reason } => reason.as_str().into(),
             Self::Win {
                 winner,
                 reason: WinReason::DenEntry,

@@ -10,10 +10,10 @@ export const TERRAIN_INDICES = {
     square(4, 1), square(4, 2), square(4, 4), square(4, 5),
     square(5, 1), square(5, 2), square(5, 4), square(5, 5),
   ],
-  blueTraps: [square(8, 2), square(8, 4), square(7, 3)],
-  redTraps: [square(0, 2), square(0, 4), square(1, 3)],
-  blueDen: square(8, 3),
-  redDen: square(0, 3),
+  redTraps: [square(8, 2), square(8, 4), square(7, 3)],
+  blueTraps: [square(0, 2), square(0, 4), square(1, 3)],
+  redDen: square(8, 3),
+  blueDen: square(0, 3),
 } as const;
 
 const WATER = new Set<number>(TERRAIN_INDICES.water);

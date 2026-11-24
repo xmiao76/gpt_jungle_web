@@ -273,7 +273,7 @@ impl SearchEngine {
 
         let fallback = canonical_first(legal.as_slice());
         let mut completed_move = fallback;
-        let mut completed_score = evaluator.evaluate(&board);
+        let mut completed_score = 0;
         let mut completed_depth = 0;
         let mut completed_pv = vec![fallback];
         let mut iterations = Vec::new();
@@ -395,7 +395,6 @@ struct SearchSession<'a> {
     nodes: u64,
     selective_depth: u8,
     diagnostics: SearchDiagnostics,
-    path: Vec<u64>,
     killers: [[u32; 2]; MAX_PLY],
     pv: Vec<Vec<Option<Move>>>,
     pv_lengths: Vec<usize>,
@@ -429,7 +428,6 @@ impl<'a> SearchSession<'a> {
             nodes: 0,
             selective_depth: 0,
             diagnostics: SearchDiagnostics::default(),
-            path: Vec::with_capacity(MAX_PLY),
             killers: [[0; 2]; MAX_PLY],
             pv: vec![vec![None; MAX_PLY]; MAX_PLY],
             pv_lengths: vec![0; MAX_PLY],
@@ -518,7 +516,7 @@ impl<'a> SearchSession<'a> {
         self.enter_node(0, false)?;
         self.clear_pv(0);
         let original_alpha = alpha;
-        let root_key = board.zobrist_hash();
+        let root_key = board.search_key();
         let table_move = self
             .table
             .probe(root_key)
@@ -528,7 +526,6 @@ impl<'a> SearchSession<'a> {
         let mut best_move = ordered[0];
         let mut best_score = -INFINITY;
         let mut history_dependent = false;
-        self.path.push(root_key);
 
         for (index, movement) in ordered.into_iter().enumerate() {
             let extension = self.extension_for(movement, 0);
@@ -595,7 +592,6 @@ impl<'a> SearchSession<'a> {
                 break;
             }
         }
-        self.path.pop();
 
         let bound = if best_score <= original_alpha {
             Bound::Upper
@@ -639,18 +635,17 @@ impl<'a> SearchSession<'a> {
             return Ok(NodeValue::independent(self.evaluator.evaluate(board)));
         }
 
-        let key = board.zobrist_hash();
+        let key = board.search_key();
         if let Some(hit) = self.oracle.and_then(|oracle| oracle.probe(board)) {
             self.diagnostics.tablebase_hits += 1;
             return Ok(NodeValue::independent(oracle_score(hit, ply)));
         }
-        if self.path.contains(&key) {
+        if board.draw_reason().is_some() && matches!(board.outcome(), Outcome::Draw { .. }) {
             self.diagnostics.cycle_hits += 1;
             return Ok(NodeValue::cycle());
         }
 
-        self.path.push(key);
-        let result = self.negamax_body(
+        self.negamax_body(
             board,
             depth,
             alpha,
@@ -660,9 +655,7 @@ impl<'a> SearchSession<'a> {
             extensions_used,
             previous_move,
             key,
-        );
-        self.path.pop();
-        result
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -855,18 +848,17 @@ impl<'a> SearchSession<'a> {
             self.diagnostics.evaluations += 1;
             return Ok(NodeValue::independent(self.evaluator.evaluate(board)));
         }
-        let key = board.zobrist_hash();
         if let Some(hit) = self.oracle.and_then(|oracle| oracle.probe(board)) {
             self.diagnostics.tablebase_hits += 1;
             return Ok(NodeValue::independent(oracle_score(hit, ply)));
         }
-        if self.path.contains(&key) {
+        if board.draw_reason().is_some() && matches!(board.outcome(), Outcome::Draw { .. }) {
             self.diagnostics.cycle_hits += 1;
             return Ok(NodeValue::cycle());
         }
-        self.path.push(key);
+
         let moves = board.legal_moves();
-        let result = if moves.is_empty() {
+        if moves.is_empty() {
             Ok(NodeValue::independent(terminal_score(
                 board.outcome_from_legal_moves(&moves),
                 board.side_to_move(),
@@ -874,9 +866,7 @@ impl<'a> SearchSession<'a> {
             )))
         } else {
             self.quiescence_body(board, alpha, beta, ply, remaining, previous_move, &moves)
-        };
-        self.path.pop();
-        result
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -908,11 +898,14 @@ impl<'a> SearchSession<'a> {
         }
 
         let mut tactical: Vec<Move> = if under_den_threat {
-            legal_moves
-                .iter()
-                .copied()
-                .filter(|movement| defends_den(board, *movement))
-                .collect()
+            let mut defenses = Vec::new();
+            for &movement in legal_moves {
+                self.enter_node(ply + 1, true)?;
+                if defends_den(board, movement) {
+                    defenses.push(movement);
+                }
+            }
+            defenses
         } else {
             let target_den = opponent_den(board.side_to_move());
             legal_moves
@@ -1170,7 +1163,7 @@ fn has_immediate_den_threat(position: &Position) -> bool {
 fn defends_den(position: &mut Position, movement: Move) -> bool {
     let mover = position.side_to_move();
     let undo = position.make_move_unchecked(movement);
-    let defended = position.outcome().winner() == Some(mover)
+    let defended = position.outcome().is_over()
         || !position
             .legal_moves()
             .iter()
@@ -1199,7 +1192,7 @@ fn terminal_score(outcome: Outcome, side_to_move: Side, ply: usize) -> i32 {
     match outcome {
         Outcome::Win { winner, .. } if winner == side_to_move => MATE_SCORE - distance,
         Outcome::Win { .. } => -MATE_SCORE + distance,
-        Outcome::Ongoing => 0,
+        Outcome::Ongoing | Outcome::Draw { .. } => 0,
     }
 }
 
@@ -1284,10 +1277,10 @@ mod tests {
     fn search_finds_an_immediate_den_win() {
         let position = Position::from_piece_placements_checked(
             &[
-                (10, Piece::new(Side::Blue, PieceKind::Cat)),
-                (62, Piece::new(Side::Red, PieceKind::Elephant)),
+                (10, Piece::new(Side::Red, PieceKind::Cat)),
+                (62, Piece::new(Side::Blue, PieceKind::Elephant)),
             ],
-            Side::Blue,
+            Side::Red,
         )
         .unwrap();
         let winning = position.find_legal_move(10, 3).unwrap();
@@ -1303,10 +1296,10 @@ mod tests {
     fn terminal_position_returns_no_move() {
         let position = Position::from_piece_placements_checked(
             &[
-                (3, Piece::new(Side::Blue, PieceKind::Cat)),
-                (62, Piece::new(Side::Red, PieceKind::Elephant)),
+                (3, Piece::new(Side::Red, PieceKind::Cat)),
+                (62, Piece::new(Side::Blue, PieceKind::Elephant)),
             ],
-            Side::Red,
+            Side::Blue,
         )
         .unwrap();
         let mut engine = SearchEngine::new(SearchConfig::easy());

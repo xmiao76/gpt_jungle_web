@@ -177,38 +177,6 @@ impl LegacyTwoPieceTablebase {
         TablebaseHit::decode(self.entries[index]).ok().flatten()
     }
 
-    pub fn probe_position(&self, position: &jungle_core::Position) -> Option<TablebaseHit> {
-        let mut blue = None;
-        let mut red = None;
-        for (square, &code) in position.board_codes().iter().enumerate() {
-            if code == 0 {
-                continue;
-            }
-            let piece = jungle_core::Piece::from_code(code)
-                .expect("canonical Position contains only validated piece codes");
-            let target = match piece.side() {
-                jungle_core::Side::Blue => &mut blue,
-                jungle_core::Side::Red => &mut red,
-            };
-            if target.is_some() {
-                return None;
-            }
-            *target = Some((square as u8, piece.kind()));
-        }
-        let (blue_position, blue_kind) = blue?;
-        let (red_position, red_kind) = red?;
-        self.probe_codes(
-            blue_kind,
-            blue_position,
-            red_kind,
-            red_position,
-            match position.side_to_move() {
-                jungle_core::Side::Blue => SideToMove::Blue,
-                jungle_core::Side::Red => SideToMove::Red,
-            },
-        )
-    }
-
     /// Convert one exact material signature to the sparse, streamable shard format.
     pub fn import_material_shard(
         &self,
@@ -300,33 +268,6 @@ mod tests {
                 }
             }
         }
-    }
-
-    #[test]
-    fn legacy_probe_accepts_canonical_core_position() {
-        use jungle_core::{Piece, Position, Side};
-
-        let tablebase = LegacyTwoPieceTablebase::from_bytes(&legacy_asset()).unwrap();
-        let position = Position::from_piece_placements_checked(
-            &[
-                (14, Piece::new(Side::Blue, PieceKind::Rat)),
-                (15, Piece::new(Side::Red, PieceKind::Elephant)),
-            ],
-            Side::Blue,
-        )
-        .unwrap();
-        let hit = tablebase.probe_position(&position);
-        assert_eq!(hit, Some(TablebaseHit::win(1)));
-        assert_eq!(
-            hit,
-            tablebase.probe_codes(
-                PieceKind::Rat,
-                14,
-                PieceKind::Elephant,
-                15,
-                SideToMove::Blue,
-            )
-        );
     }
 
     #[test]

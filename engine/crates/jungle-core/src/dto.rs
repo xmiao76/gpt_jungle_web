@@ -103,6 +103,8 @@ pub struct CoordinatesDto {
 #[serde(rename_all = "snake_case")]
 pub enum ResultType {
     Ongoing,
+    Repetition,
+    NoCapture,
     DenEntry,
     CaptureAll,
     NoLegalMoves,
@@ -113,6 +115,12 @@ impl ResultType {
     pub const fn from_outcome(outcome: Outcome) -> Self {
         match outcome {
             Outcome::Ongoing => Self::Ongoing,
+            Outcome::Draw {
+                reason: crate::DrawReason::Repetition,
+            } => Self::Repetition,
+            Outcome::Draw {
+                reason: crate::DrawReason::NoCapture,
+            } => Self::NoCapture,
             Outcome::Win {
                 reason: WinReason::DenEntry,
                 ..
@@ -132,6 +140,8 @@ impl ResultType {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GameStateDto {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<PositionOrigin>,
     pub board: Vec<Option<Piece>>,
     pub side_to_move: Side,
     #[serde(default)]
@@ -150,25 +160,9 @@ pub enum Difficulty {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct SaveSettingsV1 {
-    pub difficulty: Difficulty,
-    pub human_side: Side,
-    pub board_flipped: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct JungleSaveV1 {
-    pub schema: String,
-    pub version: u32,
-    pub engine_version: String,
-    pub created_at: String,
-    pub game_state: GameStateDto,
-    pub settings: SaveSettingsV1,
-}
-
-impl JungleSaveV1 {
-    pub const SCHEMA: &'static str = "gpt-jungle-save";
-    pub const VERSION: u32 = 1;
+#[serde(deny_unknown_fields)]
+pub struct PositionOrigin {
+    pub board: Vec<u8>,
+    pub first: Side,
+    pub quiet: u32,
 }

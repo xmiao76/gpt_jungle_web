@@ -1,6 +1,6 @@
 use jungle_core::{
-    CoordinatesDto, Difficulty, GameStateDto, JungleSaveV1, Move, Outcome, Piece, PieceKind,
-    Position, ResultType, SaveSettingsV1, Session, SessionError, Side, WinReason,
+    CoordinatesDto, GameStateDto, Move, Outcome, Piece, PieceKind, Position, ResultType, Session,
+    SessionError, Side, WinReason,
 };
 
 fn piece(side: Side, kind: PieceKind) -> Piece {
@@ -40,16 +40,16 @@ fn coordinates_are_strictly_checked_and_cannot_use_negative_indexing() {
 fn terminal_sessions_are_immutable_but_undo_redo_crosses_the_boundary() {
     let mut session = puzzle(
         &[
-            (10, piece(Side::Blue, PieceKind::Cat)),
-            (62, piece(Side::Red, PieceKind::Rat)),
+            (10, piece(Side::Red, PieceKind::Cat)),
+            (62, piece(Side::Blue, PieceKind::Rat)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     let winning = session.apply_coordinates(10, 3).unwrap();
     assert_eq!(
         session.outcome(),
         Outcome::Win {
-            winner: Side::Blue,
+            winner: Side::Red,
             reason: WinReason::DenEntry
         }
     );
@@ -63,13 +63,13 @@ fn terminal_sessions_are_immutable_but_undo_redo_crosses_the_boundary() {
     assert_eq!(session.outcome(), Outcome::Ongoing);
     assert_eq!(
         session.position().piece_at(10),
-        Some(piece(Side::Blue, PieceKind::Cat))
+        Some(piece(Side::Red, PieceKind::Cat))
     );
     assert!(session.redo());
     assert!(session.outcome().is_over());
     assert_eq!(
         session.position().piece_at(3),
-        Some(piece(Side::Blue, PieceKind::Cat))
+        Some(piece(Side::Red, PieceKind::Cat))
     );
 }
 
@@ -77,16 +77,16 @@ fn terminal_sessions_are_immutable_but_undo_redo_crosses_the_boundary() {
 fn capture_all_and_no_legal_move_sessions_are_terminal() {
     let mut capture = puzzle(
         &[
-            (14, piece(Side::Blue, PieceKind::Cat)),
-            (15, piece(Side::Red, PieceKind::Rat)),
+            (14, piece(Side::Red, PieceKind::Cat)),
+            (15, piece(Side::Blue, PieceKind::Rat)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     capture.apply_coordinates(14, 15).unwrap();
     assert_eq!(
         capture.outcome(),
         Outcome::Win {
-            winner: Side::Blue,
+            winner: Side::Red,
             reason: WinReason::CaptureAll
         }
     );
@@ -97,16 +97,16 @@ fn capture_all_and_no_legal_move_sessions_are_terminal() {
 
     let mut no_moves = puzzle(
         &[
-            (21, piece(Side::Blue, PieceKind::Cat)),
-            (14, piece(Side::Red, PieceKind::Dog)),
-            (28, piece(Side::Red, PieceKind::Wolf)),
+            (21, piece(Side::Red, PieceKind::Cat)),
+            (14, piece(Side::Blue, PieceKind::Dog)),
+            (28, piece(Side::Blue, PieceKind::Wolf)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     assert_eq!(
         no_moves.outcome(),
         Outcome::Win {
-            winner: Side::Red,
+            winner: Side::Blue,
             reason: WinReason::NoLegalMoves
         }
     );
@@ -117,7 +117,7 @@ fn capture_all_and_no_legal_move_sessions_are_terminal() {
 }
 
 #[test]
-fn game_state_and_save_v1_round_trip_strictly() {
+fn native_game_state_round_trips() {
     let mut session = Session::new();
     session.apply_coordinates(48, 41).unwrap();
     session.apply_coordinates(14, 21).unwrap();
@@ -128,32 +128,17 @@ fn game_state_and_save_v1_round_trip_strictly() {
     assert_eq!(loaded.history(), session.history());
     assert!(!loaded.can_undo());
     assert!(!loaded.can_redo());
-
-    let settings = SaveSettingsV1 {
-        difficulty: Difficulty::Hard,
-        human_side: Side::Blue,
-        board_flipped: false,
-    };
-    let save_json = session
-        .export_save_v1_json("0.2.0", "2026-08-16T00:00:00.000Z", settings.clone())
-        .unwrap();
-    let (saved_session, save) = Session::import_save_v1_json(&save_json).unwrap();
-    assert_eq!(save.schema, JungleSaveV1::SCHEMA);
-    assert_eq!(save.version, 1);
-    assert_eq!(save.settings, settings);
-    assert_eq!(saved_session.position(), session.position());
-    assert_eq!(saved_session.history(), session.history());
 }
 
 #[test]
-fn historyless_strict_puzzles_remain_save_v1_compatible() {
+fn historyless_puzzles_round_trip() {
     let session = puzzle(
         &[
-            (21, piece(Side::Blue, PieceKind::Cat)),
-            (14, piece(Side::Red, PieceKind::Dog)),
-            (28, piece(Side::Red, PieceKind::Wolf)),
+            (21, piece(Side::Red, PieceKind::Cat)),
+            (14, piece(Side::Blue, PieceKind::Dog)),
+            (28, piece(Side::Blue, PieceKind::Wolf)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     let dto = session.game_state_dto();
     assert!(dto.move_history.is_empty());
@@ -166,22 +151,20 @@ fn historyless_strict_puzzles_remain_save_v1_compatible() {
 fn moves_after_a_historyless_puzzle_serialize_from_the_current_position() {
     let mut session = puzzle(
         &[
-            (28, piece(Side::Blue, PieceKind::Cat)),
-            (34, piece(Side::Red, PieceKind::Dog)),
+            (28, piece(Side::Red, PieceKind::Cat)),
+            (34, piece(Side::Blue, PieceKind::Dog)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     session.apply_coordinates(28, 21).unwrap();
     assert_eq!(session.history().len(), 1, "the live UI log is retained");
 
     let dto = session.game_state_dto();
-    assert!(
-        dto.move_history.is_empty(),
-        "save v1 cannot encode a nonstandard history origin"
-    );
+    assert_eq!(dto.move_history, session.history());
+    assert!(dto.origin.is_some());
     let loaded = Session::from_game_state_dto(dto).unwrap();
     assert_eq!(loaded.position(), session.position());
-    assert!(loaded.history().is_empty());
+    assert_eq!(loaded.history(), session.history());
 }
 
 #[test]
@@ -196,7 +179,7 @@ fn malformed_boards_results_and_history_metadata_are_rejected() {
     let mut water_cat = Session::new().game_state_dto();
     water_cat.move_history.clear();
     water_cat.board[42] = None;
-    water_cat.board[22] = Some(piece(Side::Blue, PieceKind::Elephant));
+    water_cat.board[22] = Some(piece(Side::Red, PieceKind::Elephant));
     assert!(matches!(
         Session::from_game_state_dto(water_cat),
         Err(SessionError::InvalidPosition(_))
@@ -212,7 +195,7 @@ fn malformed_boards_results_and_history_metadata_are_rejected() {
 
     let mut wrong_result = Session::new().game_state_dto();
     wrong_result.result = ResultType::CaptureAll;
-    wrong_result.winner = Some(Side::Blue);
+    wrong_result.winner = Some(Side::Red);
     wrong_result.result_reason = "forged".to_owned();
     assert!(matches!(
         Session::from_game_state_dto(wrong_result),
@@ -223,7 +206,7 @@ fn malformed_boards_results_and_history_metadata_are_rejected() {
     one_move.apply_coordinates(48, 41).unwrap();
     let mut tampered = one_move.game_state_dto();
     tampered.move_history[0] =
-        Move::from_parts(48, 41, piece(Side::Blue, PieceKind::Cat), None, false).unwrap();
+        Move::from_parts(48, 41, piece(Side::Red, PieceKind::Cat), None, false).unwrap();
     assert!(matches!(
         Session::from_game_state_dto(tampered),
         Err(SessionError::InvalidHistory { .. })
@@ -256,7 +239,7 @@ fn play_reachable_den_win() -> Session {
     assert_eq!(
         session.outcome(),
         Outcome::Win {
-            winner: Side::Blue,
+            winner: Side::Red,
             reason: WinReason::DenEntry
         }
     );
@@ -267,12 +250,12 @@ fn play_reachable_den_win() -> Session {
 fn imported_history_rejects_every_ply_after_the_first_terminal_result() {
     let terminal = play_reachable_den_win();
     let mut forged = terminal.game_state_dto();
-    let red_lion = piece(Side::Red, PieceKind::Lion);
+    let red_lion = piece(Side::Blue, PieceKind::Lion);
     let post_terminal = Move::from_parts(1, 0, red_lion, None, false).unwrap();
     forged.move_history.push(post_terminal);
     forged.board[1] = None;
     forged.board[0] = Some(red_lion);
-    forged.side_to_move = Side::Blue;
+    forged.side_to_move = Side::Red;
     // Den entry remains structurally visible, so the declared result still
     // matches the final board. Replay must nevertheless reject ply 18.
     assert_eq!(forged.result, ResultType::DenEntry);
@@ -308,47 +291,19 @@ fn move_json_rejects_negative_coordinates_bad_notes_and_unknown_fields() {
 }
 
 #[test]
-fn save_v1_rejects_unknown_schema_version_and_empty_metadata() {
-    let settings = SaveSettingsV1 {
-        difficulty: Difficulty::Medium,
-        human_side: Side::Red,
-        board_flipped: true,
-    };
-    let session = Session::new();
-    let mut save = session.export_save_v1("2.0.0", "now", settings);
-    save.schema = "other".to_owned();
-    assert!(matches!(
-        Session::from_save_v1(&save),
-        Err(SessionError::InvalidSave(_))
-    ));
-    save.schema = JungleSaveV1::SCHEMA.to_owned();
-    save.version = 2;
-    assert!(matches!(
-        Session::from_save_v1(&save),
-        Err(SessionError::InvalidSave(_))
-    ));
-    save.version = 1;
-    save.engine_version.clear();
-    assert!(matches!(
-        Session::from_save_v1(&save),
-        Err(SessionError::InvalidSave(_))
-    ));
-}
-
-#[test]
-fn result_reason_and_wire_shape_match_existing_save_v1() {
+fn native_state_has_canonical_side_and_result() {
     let state = Session::new().game_state_dto();
     let value = serde_json::to_value(&state).unwrap();
-    assert_eq!(value["side_to_move"], "blue");
+    assert_eq!(value["side_to_move"], "red");
     assert_eq!(value["result"], "ongoing");
     assert_eq!(value["result_reason"], "");
     assert_eq!(value["board"].as_array().unwrap().len(), 63);
     assert_eq!(value["board"][48]["kind"], "RAT");
 
     let den = play_reachable_den_win().game_state_dto();
-    assert_eq!(den.winner, Some(Side::Blue));
+    assert_eq!(den.winner, Some(Side::Red));
     assert_eq!(den.result, ResultType::DenEntry);
-    assert_eq!(den.result_reason, "Blue entered the red den.");
+    assert_eq!(den.result_reason, "Red entered the blue den.");
 }
 
 #[test]

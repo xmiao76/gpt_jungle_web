@@ -5,3 +5,12 @@
 # source-manifest hashes are identical on Windows and Linux checkouts.
 python/jungle/**/*.py -text
 python/jungle/**/*.jgtb -text
+
+rules/*.json text eol=lf
+identity.json text eol=lf
+wit/*.wit text eol=lf
+# Integrity checks use the distributed HTML bytes on every platform.
+release/*.html binary
+# The component embeds this third-party notice byte for byte.
+docs/art-license.txt text eol=crlf
+*.wasm binary

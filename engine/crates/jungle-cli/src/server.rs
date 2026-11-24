@@ -1,15 +1,13 @@
 use std::io::{self, BufRead, Write};
-use std::sync::Arc;
 
 use serde::Serialize;
 use serde_json::Value;
 
-use jungle_core::{Outcome, RULES_SEMANTIC_VERSION, RULESET_ID, Session, SessionError};
+use jungle_core::{RULES_SEMANTIC_VERSION, RULESET_ID, Session, SessionError};
 use jungle_search::{
-    EndgameOracle, NoopControl, OracleHit, OracleOutcome, SEARCH_ENGINE_VERSION, SearchConfig,
-    SearchEngine, SearchTermination, SystemControl,
+    NoopControl, SEARCH_ENGINE_VERSION, SearchConfig, SearchEngine, SearchTermination,
+    SystemControl,
 };
-use jungle_tablebase::{LegacyTwoPieceTablebase, Wdl};
 
 use crate::protocol::{
     ApplyMoveData, Capabilities, ChooseMoveData, CloseData, Command, ErrorCode, HelloData,
@@ -130,41 +128,12 @@ pub struct NativeBackend {
     search: SearchEngine,
 }
 
-#[derive(Debug)]
-struct NativeTwoPieceOracle(LegacyTwoPieceTablebase);
-
-impl NativeTwoPieceOracle {
-    fn embedded() -> Self {
-        const BYTES: &[u8] = include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../../python/jungle/ai/data/two_piece_v1.jgtb"
-        ));
-        Self(LegacyTwoPieceTablebase::from_bytes(BYTES).expect("embedded tablebase validates"))
-    }
-}
-
-impl EndgameOracle for NativeTwoPieceOracle {
-    fn probe(&self, position: &jungle_core::Position) -> Option<OracleHit> {
-        self.0.probe_position(position).map(|hit| OracleHit {
-            outcome: match hit.wdl {
-                Wdl::Win => OracleOutcome::Win,
-                Wdl::Draw => OracleOutcome::Draw,
-                Wdl::Loss => OracleOutcome::Loss,
-            },
-            distance: hit.distance,
-        })
-    }
-}
-
 impl NativeBackend {
     #[must_use]
     pub fn new() -> Self {
         Self {
             session: None,
-            search: SearchEngine::with_oracle(
-                SearchConfig::hard(),
-                Arc::new(NativeTwoPieceOracle::embedded()),
-            ),
+            search: SearchEngine::new(SearchConfig::hard()),
         }
     }
 
@@ -189,10 +158,10 @@ impl NativeBackend {
     fn choose_move(&mut self, limits: LimitSpec) -> Result<ChooseMoveData, ProtocolError> {
         let search_limits = limits.to_search_limits()?;
         let session = self.session()?;
-        if let Outcome::Win { winner, reason } = session.outcome() {
+        if session.outcome().is_over() {
             return Err(
                 ProtocolError::new(ErrorCode::GameOver, "game is already over")
-                    .with_details(serde_json::json!({ "winner": winner, "reason": reason })),
+                    .with_details(serde_json::json!(session.outcome())),
             );
         }
         let position = session.position().clone();

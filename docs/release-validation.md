@@ -1,113 +1,51 @@
-# Release validation
+# Jungle 2.0.0 release validation
 
-## Engine-v2 status
+The release identifies itself as **GPT-6 · Codex**, platform `official`. Validation used Windows 10, Rust 1.94.1, wasm-tools 1.263.0, wasm-bindgen-cli 0.2.130, Node 26.13.1 and jco-transpile 0.24.0.
 
-The Rust/Wasm implementation was validated locally on 2026-08-23
-(America/Los_Angeles) and deployed to the existing production project.
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `release/gpt-6-codex-2.0.0.wasm` | 452,804 | `4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034` |
+| `release/index.html` | 1,241,268 | `375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146` |
 
-- Project: `gpt-jungle`
-- Production branch: `main`
-- Deployment mode: Wrangler Direct Upload
-- Deployment ID: `a82ba5c7-e9c0-4d58-b0f4-0d489757dc1d`
-- Immutable URL: <https://a82ba5c7.gpt-jungle.pages.dev>
-- Production alias: <https://gpt-jungle.pages.dev>
-- Cloudflare source metadata: `b35fb46` with the working tree marked dirty
-- Public verification date: 2026-08-23 (America/Los_Angeles)
+## Rules, strategy and component
 
-Deployment remains static Cloudflare Pages with no Functions, Workers, storage,
-bindings, secrets, remote engine, or telemetry. `npm run deploy` has a
-`predeploy` production build so a test-hook build cannot be uploaded by
-accident.
+The release build checked the SHA-256 of the canonical rules profile against `a457bbc009e975a9eafe5ff1f8fa40ca2548f2a689b121c8c4ed99dd0f3fdc57`. The independent referee and Rust engine agreed on both openings, all 23 portable legality cases, capture and quiet counters, outcome precedence and repetition.
 
-## Complete local gate
+The component's expanded WIT matched the checked-in world. Transpilation took 579 ms. The fresh-instance admission smoke test took 133 ms. On the opening, Hard used 45 ms at 20,000 nodes and 1.51 s at 500,000 nodes. Geometry, opacity, flip, deterministic choice, isolated instances, capture animation and direct replay were checked against the release file. [Admission measurements](evidence/admission.json)
 
-`npm run test:all` passed and left a normal hook-free production build in
-`dist`. The gate covers:
+The independent browser referee ran three Medium matches at 20,000 nodes, seed 20261120. Both seats drew the opening and every subsequent revision, including the result.
 
-- the 18-file frozen Python source manifest and 110 Python reference tests;
-- Rust formatting and Clippy with warnings denied;
-- 98 Rust tests across the canonical rules/session, search, tablebase, Wasm
-  bridge, JSONL server, and subprocess arena;
-- six deterministic artifact/build tests;
-- ESLint, TypeScript compilation, and 42 Vitest/React tests across 13 files;
-- real built-Wasm Playwright flows: 17 passed and 16 intentional
-  non-Chromium skips across Chromium, Firefox, and WebKit;
-- a final scalar/threaded Wasm build, integrity manifest, and production Vite
-  bundle.
+| GPT-6 · Codex seat | Opponent | Result | Plies | Frames per seat |
+| --- | --- | --- | ---: | ---: |
+| Red | First legal | Red won by den entry | 139 | 140 |
+| Blue | First legal | Blue won by den entry | 36 | 37 |
+| Both | Self | Threefold repetition | 79 | 80 |
 
-The browser suite exercises runtime selection, mandatory tablebase validation,
-canonical rules, human/AI turns, search identity, four-lane Lazy SMP where the
-host supports it, exact deadlines, progress, immediate hard cancellation,
-undo/redo, save-v1 round trips, historyless puzzles, board orientation,
-responsive geometry, terminal UI, and a complete exact-tablebase game.
+The separate `npm run conformance` workflow loaded the distributed component and fixture without rebuilding Rust. Its match UI completed the Red game and replayed revision 1 after displaying revision 139.
 
-## Browser performance record
+The release scored 52.625% over 200 color-swapped pairs against the previous search adapted to the v2 rules, with a paired 95% interval of 50.25–54.875%. [Strength report](hard-ai-benchmark.md)
 
-Implementation host:
+The public DeepSeek v4.1 Flash · DeepSeek Harness 2.0.0 download passed the same admission checks. At 20,000 nodes, GPT-6 · Codex drew as Red after 136 plies on the quiet limit and lost as Blue after 181 plies by den entry. This single opening pair scored 25%. The record includes the opponent's SHA-256 and both move histories. [Match record](evidence/external-match.json) · [Opponent download site](https://deepseek-jungle.pages.dev/)
 
-- CPU: AMD Ryzen 5 PRO 2400G with Radeon Vega Graphics
-- OS: Windows 10 Pro 10.0.19045
-- Browser: Playwright Chromium 151.0.7922.34
-- Position: standard initial setup, AI controlling Blue
-- Hard budget: 1,950 ms soft / 2,000 ms hard
-- Runtime tier: SIMD/atomics artifact, four independent Lazy-SMP lanes
+## Reproduce the checks
 
-Observed final-gate result:
+Run the following after installing the pinned dependencies and browsers as described in the README and CI workflow.
 
-| Depth | Aggregate nodes | Nodes/s | TT hits | TB hits | Search time |
-| ---: | ---: | ---: | ---: | ---: | ---: |
-| 9 | 2,227,168 | 1,113,473 | 383,384 | 0 | 2,000.2 ms |
+```sh
+npm run verify:release
+npm run build
+npm run verify:python
+npm run test:python
+npm run lint:rust
+npm run test:rust
+npm run lint
+npm test
+npm run test:release
+npm run test:controls
+node scripts/browser-release.mjs --target all --browsers chrome,edge,firefox,webkit
+node scripts/browser-release.mjs --target hard --browsers chrome
+node scripts/browser-release.mjs --target human-hard --browsers chrome
+node scripts/browser-release.mjs --target fallback-game --browsers chrome
+```
 
-The main thread sustained 54.4 animation frames/s during search, and the
-How-to-Play interaction completed in 76 ms. The initial 16-piece position is
-not tablebase-eligible; a separate two-piece browser fixture verifies nonzero
-exact hits. Node totals vary with host load because each lane searches until
-the wall-clock stop and only completed iterations are eligible for selection.
-
-## Strength diagnostic
-
-`npm run benchmark:ai` runs a quick equal-time, color-swapped subprocess pair
-against the frozen `web-hard-v2` reference. The final 80 ms smoke run produced:
-
-- candidate score: 100%;
-- two wins and zero draws or losses;
-- 100% from each color;
-- zero illegal moves, deadline losses, crashes, or protocol failures.
-
-This one-pair smoke result is not an Elo estimate or promotion. A release that
-claims a new champion still requires an untuned holdout corpus, at least 200
-pairs, the paired confidence/color gates, and zero strict failures documented
-in [Hard AI validation](hard-ai-benchmark.md).
-
-## Artifact record
-
-- Runtime manifest schema: `gpt-jungle-engine-runtime` v2
-- Engine ABI: `jungle-wasm-v2`
-- Rules fingerprint:
-  `bd5e29e5baf50114aa5ce62f7bfaee325a4aabc4ba69e7b983f3ba79c00a0c3a`
-- Runtime manifest SHA-256:
-  `292b3746573a4d0827b81bfaff2b2871f801599a1c569e65520bc5071aebf302`
-- Published engine/tablebase bytes: 1,929,193
-- Mandatory two-piece tablebase SHA-256:
-  `a32b620d22d1735ef4f2a13b8d1388c07ad45151060f638c2434db988f97ece5`
-- Frozen Python reference commit:
-  `b0bb427458a686aa0ed10770bda50f9311a7845b`
-
-Generated runtime assets are ignored build outputs. The production bundle
-contains the Rust/Wasm variants, exact tablebase, and runtime manifest; the old
-Pyodide archive is removed during every engine build.
-
-## Post-deploy verification
-
-The three hook-free public Playwright scenarios passed against both the
-immutable URL and production alias. The deployed manifest is 2,747 bytes and
-matches the local SHA-256 recorded above at both endpoints.
-
-- [x] COOP/COEP/CORP headers produce the expected capability tier.
-- [x] Manifest, selected Wasm module, and mandatory tablebase return without
-      integrity, CORS, MIME, or status errors.
-- [x] No production `window.__JUNGLE_TEST__` hook exists.
-- [x] Human-first and AI-first games complete legal replies.
-- [x] Save/load, paired undo/redo, orientation, diagnostics, and mute work.
-- [x] A deterministic two-piece game reaches an authentic terminal result.
-- [x] Desktop and 390 px layouts remain usable without horizontal scrolling.
+The Python provenance check verified 18 frozen source files. All 110 Python tests, the Rust workspace tests, 15 Vitest tests, Clippy, ESLint, TypeScript and the production build passed. Browser controls covered search cancellation, undo and redo, Blue first, board flip, mute, auto-play pause, version-1 save rejection and a version-2 round trip. [Controls record](evidence/controls.json)

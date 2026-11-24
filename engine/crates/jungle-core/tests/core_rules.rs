@@ -15,42 +15,39 @@ fn position(placements: &[(u8, Piece)], side: Side) -> Position {
 #[test]
 fn initial_setup_and_rules_fingerprint_are_exact() {
     let state = Position::initial();
-    assert_eq!(state.side_to_move(), Side::Blue);
-    assert_eq!(state.piece_count(Side::Blue), 8);
+    assert_eq!(state.side_to_move(), Side::Red);
     assert_eq!(state.piece_count(Side::Red), 8);
+    assert_eq!(state.piece_count(Side::Blue), 8);
     assert_eq!(
         state.piece_at(42),
-        Some(piece(Side::Blue, PieceKind::Elephant))
-    );
-    assert_eq!(state.piece_at(44), Some(piece(Side::Blue, PieceKind::Wolf)));
-    assert_eq!(
-        state.piece_at(46),
-        Some(piece(Side::Blue, PieceKind::Leopard))
-    );
-    assert_eq!(state.piece_at(48), Some(piece(Side::Blue, PieceKind::Rat)));
-    assert_eq!(state.piece_at(50), Some(piece(Side::Blue, PieceKind::Cat)));
-    assert_eq!(state.piece_at(54), Some(piece(Side::Blue, PieceKind::Dog)));
-    assert_eq!(
-        state.piece_at(56),
-        Some(piece(Side::Blue, PieceKind::Tiger))
-    );
-    assert_eq!(state.piece_at(62), Some(piece(Side::Blue, PieceKind::Lion)));
-    assert_eq!(state.piece_at(0), Some(piece(Side::Red, PieceKind::Lion)));
-    assert_eq!(state.piece_at(6), Some(piece(Side::Red, PieceKind::Tiger)));
-    assert_eq!(state.piece_at(8), Some(piece(Side::Red, PieceKind::Dog)));
-    assert_eq!(state.piece_at(12), Some(piece(Side::Red, PieceKind::Cat)));
-    assert_eq!(state.piece_at(14), Some(piece(Side::Red, PieceKind::Rat)));
-    assert_eq!(
-        state.piece_at(16),
-        Some(piece(Side::Red, PieceKind::Leopard))
-    );
-    assert_eq!(state.piece_at(18), Some(piece(Side::Red, PieceKind::Wolf)));
-    assert_eq!(
-        state.piece_at(20),
         Some(piece(Side::Red, PieceKind::Elephant))
     );
+    assert_eq!(state.piece_at(44), Some(piece(Side::Red, PieceKind::Wolf)));
+    assert_eq!(
+        state.piece_at(46),
+        Some(piece(Side::Red, PieceKind::Leopard))
+    );
+    assert_eq!(state.piece_at(48), Some(piece(Side::Red, PieceKind::Rat)));
+    assert_eq!(state.piece_at(50), Some(piece(Side::Red, PieceKind::Cat)));
+    assert_eq!(state.piece_at(54), Some(piece(Side::Red, PieceKind::Dog)));
+    assert_eq!(state.piece_at(56), Some(piece(Side::Red, PieceKind::Tiger)));
+    assert_eq!(state.piece_at(62), Some(piece(Side::Red, PieceKind::Lion)));
+    assert_eq!(state.piece_at(0), Some(piece(Side::Blue, PieceKind::Lion)));
+    assert_eq!(state.piece_at(6), Some(piece(Side::Blue, PieceKind::Tiger)));
+    assert_eq!(state.piece_at(8), Some(piece(Side::Blue, PieceKind::Dog)));
+    assert_eq!(state.piece_at(12), Some(piece(Side::Blue, PieceKind::Cat)));
+    assert_eq!(state.piece_at(14), Some(piece(Side::Blue, PieceKind::Rat)));
+    assert_eq!(
+        state.piece_at(16),
+        Some(piece(Side::Blue, PieceKind::Leopard))
+    );
+    assert_eq!(state.piece_at(18), Some(piece(Side::Blue, PieceKind::Wolf)));
+    assert_eq!(
+        state.piece_at(20),
+        Some(piece(Side::Blue, PieceKind::Elephant))
+    );
     assert_eq!(state.legal_moves().len(), 24);
-    assert_eq!(state.hash(), 0x1383_472e_9dad_0aed);
+    assert_eq!(state.hash(), state.recompute_zobrist());
 
     assert_eq!(
         Sha256::digest(RULES_MANIFEST_JSON.as_bytes()).as_slice(),
@@ -64,10 +61,10 @@ fn exhaustive_land_capture_matrix_preserves_custom_ranks() {
         for defender_kind in PieceKind::ALL {
             let state = position(
                 &[
-                    (27, piece(Side::Blue, attacker_kind)),
-                    (20, piece(Side::Red, defender_kind)),
+                    (27, piece(Side::Red, attacker_kind)),
+                    (20, piece(Side::Blue, defender_kind)),
                 ],
-                Side::Blue,
+                Side::Red,
             );
             let expected =
                 if attacker_kind == PieceKind::Rat && defender_kind == PieceKind::Elephant {
@@ -92,129 +89,128 @@ fn exhaustive_land_capture_matrix_preserves_custom_ranks() {
 fn water_shore_rat_elephant_and_trap_capture_rules_are_exact() {
     let water_rats = position(
         &[
-            (22, piece(Side::Blue, PieceKind::Rat)),
-            (23, piece(Side::Red, PieceKind::Rat)),
+            (22, piece(Side::Red, PieceKind::Rat)),
+            (23, piece(Side::Blue, PieceKind::Rat)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     assert!(water_rats.can_capture(22, 23));
 
     let water_to_land = position(
         &[
-            (22, piece(Side::Blue, PieceKind::Rat)),
-            (15, piece(Side::Red, PieceKind::Elephant)),
+            (22, piece(Side::Red, PieceKind::Rat)),
+            (15, piece(Side::Blue, PieceKind::Elephant)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     assert!(!water_to_land.can_capture(22, 15));
 
     let land_to_water = position(
         &[
-            (21, piece(Side::Blue, PieceKind::Rat)),
-            (22, piece(Side::Red, PieceKind::Rat)),
+            (21, piece(Side::Red, PieceKind::Rat)),
+            (22, piece(Side::Blue, PieceKind::Rat)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     assert!(!land_to_water.can_capture(21, 22));
 
     let trapped_elephant = position(
         &[
-            (57, piece(Side::Blue, PieceKind::Cat)),
-            (58, piece(Side::Red, PieceKind::Elephant)),
+            (57, piece(Side::Red, PieceKind::Cat)),
+            (58, piece(Side::Blue, PieceKind::Elephant)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     assert_eq!(trapped_elephant.effective_rank(58), 0);
     assert!(trapped_elephant.can_capture(57, 58));
 
     let trapped_rat = position(
         &[
-            (57, piece(Side::Blue, PieceKind::Elephant)),
-            (58, piece(Side::Red, PieceKind::Rat)),
+            (57, piece(Side::Red, PieceKind::Elephant)),
+            (58, piece(Side::Blue, PieceKind::Rat)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     assert!(trapped_rat.can_capture(57, 58));
 
     let rat_in_own_trap = position(
         &[
-            (1, piece(Side::Blue, PieceKind::Elephant)),
-            (2, piece(Side::Red, PieceKind::Rat)),
+            (1, piece(Side::Red, PieceKind::Elephant)),
+            (2, piece(Side::Blue, PieceKind::Rat)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     assert_eq!(rat_in_own_trap.effective_rank(2), 1);
     assert!(!rat_in_own_trap.can_capture(1, 2));
 
-    // The pinned project variant lets the land-Rat exception take precedence
-    // even while that Rat is weakened in an enemy trap.
+    // Trap weakening precedes the rat/elephant exception.
     let trapped_attacking_rat = position(
         &[
-            (2, piece(Side::Blue, PieceKind::Rat)),
-            (1, piece(Side::Red, PieceKind::Elephant)),
+            (2, piece(Side::Red, PieceKind::Rat)),
+            (1, piece(Side::Blue, PieceKind::Elephant)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     assert_eq!(trapped_attacking_rat.effective_rank(2), 0);
-    assert!(trapped_attacking_rat.can_capture(2, 1));
+    assert!(!trapped_attacking_rat.can_capture(2, 1));
 }
 
 #[test]
 fn lion_and_tiger_jump_spans_and_rat_blockers_are_exact() {
     let lion = position(
         &[
-            (15, piece(Side::Blue, PieceKind::Lion)),
-            (62, piece(Side::Red, PieceKind::Cat)),
+            (15, piece(Side::Red, PieceKind::Lion)),
+            (62, piece(Side::Blue, PieceKind::Cat)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     let long = lion.find_legal_move(15, 43).unwrap();
     assert!(long.is_jump());
 
     let tiger = position(
         &[
-            (15, piece(Side::Blue, PieceKind::Tiger)),
-            (62, piece(Side::Red, PieceKind::Cat)),
+            (15, piece(Side::Red, PieceKind::Tiger)),
+            (62, piece(Side::Blue, PieceKind::Cat)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     assert_eq!(tiger.find_legal_move(15, 43), None);
 
     for kind in [PieceKind::Lion, PieceKind::Tiger] {
         let short = position(
             &[
-                (21, piece(Side::Blue, kind)),
-                (62, piece(Side::Red, PieceKind::Cat)),
+                (21, piece(Side::Red, kind)),
+                (62, piece(Side::Blue, PieceKind::Cat)),
             ],
-            Side::Blue,
+            Side::Red,
         );
         assert!(short.find_legal_move(21, 24).unwrap().is_jump());
     }
 
-    for blocker_side in [Side::Blue, Side::Red] {
+    for blocker_side in [Side::Red, Side::Blue] {
         let blocked = position(
             &[
-                (15, piece(Side::Blue, PieceKind::Lion)),
+                (15, piece(Side::Red, PieceKind::Lion)),
                 (29, piece(blocker_side, PieceKind::Rat)),
-                (62, piece(Side::Red, PieceKind::Cat)),
+                (62, piece(Side::Blue, PieceKind::Cat)),
             ],
-            Side::Blue,
+            Side::Red,
         );
         assert_eq!(blocked.find_legal_move(15, 43), None);
     }
 
     let jump_capture = position(
         &[
-            (21, piece(Side::Blue, PieceKind::Lion)),
-            (24, piece(Side::Red, PieceKind::Tiger)),
+            (21, piece(Side::Red, PieceKind::Lion)),
+            (24, piece(Side::Blue, PieceKind::Tiger)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     let movement = jump_capture.find_legal_move(21, 24).unwrap();
     assert!(movement.is_jump());
     assert_eq!(
         movement.captured(),
-        Some(piece(Side::Red, PieceKind::Tiger))
+        Some(piece(Side::Blue, PieceKind::Tiger))
     );
 }
 
@@ -222,53 +218,53 @@ fn lion_and_tiger_jump_spans_and_rat_blockers_are_exact() {
 fn own_den_is_never_a_legal_destination() {
     let state = position(
         &[
-            (52, piece(Side::Blue, PieceKind::Cat)),
-            (62, piece(Side::Red, PieceKind::Rat)),
+            (52, piece(Side::Red, PieceKind::Cat)),
+            (62, piece(Side::Blue, PieceKind::Rat)),
         ],
-        Side::Blue,
+        Side::Red,
     );
-    assert_eq!(state.find_legal_move(52, BLUE_DEN), None);
+    assert_eq!(state.find_legal_move(52, RED_DEN), None);
 }
 
 #[test]
 fn outcomes_cover_den_capture_all_and_a_valid_no_move_position() {
     let den = position(
         &[
-            (RED_DEN, piece(Side::Blue, PieceKind::Cat)),
-            (62, piece(Side::Red, PieceKind::Rat)),
+            (BLUE_DEN, piece(Side::Red, PieceKind::Cat)),
+            (62, piece(Side::Blue, PieceKind::Rat)),
         ],
-        Side::Red,
+        Side::Blue,
     );
     assert_eq!(
         den.outcome(),
         Outcome::Win {
-            winner: Side::Blue,
+            winner: Side::Red,
             reason: WinReason::DenEntry
         }
     );
     assert!(den.legal_moves().is_empty());
 
-    let capture_all = position(&[(21, piece(Side::Blue, PieceKind::Cat))], Side::Red);
+    let capture_all = position(&[(21, piece(Side::Red, PieceKind::Cat))], Side::Blue);
     assert_eq!(
         capture_all.outcome(),
         Outcome::Win {
-            winner: Side::Blue,
+            winner: Side::Red,
             reason: WinReason::CaptureAll
         }
     );
 
     let no_moves = position(
         &[
-            (21, piece(Side::Blue, PieceKind::Cat)),
-            (14, piece(Side::Red, PieceKind::Dog)),
-            (28, piece(Side::Red, PieceKind::Wolf)),
+            (21, piece(Side::Red, PieceKind::Cat)),
+            (14, piece(Side::Blue, PieceKind::Dog)),
+            (28, piece(Side::Blue, PieceKind::Wolf)),
         ],
-        Side::Blue,
+        Side::Red,
     );
     assert_eq!(
         no_moves.outcome(),
         Outcome::Win {
-            winner: Side::Red,
+            winner: Side::Blue,
             reason: WinReason::NoLegalMoves
         }
     );
@@ -278,57 +274,57 @@ fn outcomes_cover_den_capture_all_and_a_valid_no_move_position() {
 #[test]
 fn strict_position_construction_rejects_impossible_states() {
     assert_eq!(
-        Position::from_piece_placements_checked(&[], Side::Blue),
+        Position::from_piece_placements_checked(&[], Side::Red),
         Err(PositionError::EmptyPosition)
     );
     assert!(matches!(
         Position::from_piece_placements_checked(
             &[
-                (22, piece(Side::Blue, PieceKind::Cat)),
-                (62, piece(Side::Red, PieceKind::Rat)),
+                (22, piece(Side::Red, PieceKind::Cat)),
+                (62, piece(Side::Blue, PieceKind::Rat)),
             ],
-            Side::Blue,
+            Side::Red,
         ),
         Err(PositionError::NonRatInWater(22))
     ));
     assert!(matches!(
         Position::from_piece_placements_checked(
             &[
-                (BLUE_DEN, piece(Side::Blue, PieceKind::Cat)),
-                (62, piece(Side::Red, PieceKind::Rat)),
+                (RED_DEN, piece(Side::Red, PieceKind::Cat)),
+                (62, piece(Side::Blue, PieceKind::Rat)),
             ],
-            Side::Blue,
+            Side::Red,
         ),
-        Err(PositionError::OwnDenOccupied(Side::Blue))
+        Err(PositionError::OwnDenOccupied(Side::Red))
     ));
     assert!(matches!(
         Position::from_piece_placements_checked(
             &[
-                (41, piece(Side::Blue, PieceKind::Cat)),
-                (48, piece(Side::Blue, PieceKind::Cat)),
-                (62, piece(Side::Red, PieceKind::Rat)),
+                (41, piece(Side::Red, PieceKind::Cat)),
+                (48, piece(Side::Red, PieceKind::Cat)),
+                (62, piece(Side::Blue, PieceKind::Rat)),
             ],
-            Side::Blue,
+            Side::Red,
         ),
         Err(PositionError::DuplicatePiece { .. })
     ));
     assert!(matches!(
         Position::from_piece_placements_checked(
             &[
-                (41, piece(Side::Blue, PieceKind::Cat)),
-                (41, piece(Side::Red, PieceKind::Dog)),
+                (41, piece(Side::Red, PieceKind::Cat)),
+                (41, piece(Side::Blue, PieceKind::Dog)),
             ],
-            Side::Blue,
+            Side::Red,
         ),
         Err(PositionError::SquareOccupied(41))
     ));
     assert!(matches!(
         Position::from_piece_placements_checked(
             &[
-                (RED_DEN, piece(Side::Blue, PieceKind::Cat)),
-                (BLUE_DEN, piece(Side::Red, PieceKind::Dog)),
+                (BLUE_DEN, piece(Side::Red, PieceKind::Cat)),
+                (RED_DEN, piece(Side::Blue, PieceKind::Dog)),
             ],
-            Side::Blue,
+            Side::Red,
         ),
         Err(PositionError::BothDensWon)
     ));
@@ -338,13 +334,13 @@ fn strict_position_construction_rejects_impossible_states() {
 fn checked_position_application_rejects_terminal_moves() {
     let mut den = position(
         &[
-            (RED_DEN, piece(Side::Blue, PieceKind::Cat)),
-            (62, piece(Side::Red, PieceKind::Rat)),
+            (BLUE_DEN, piece(Side::Red, PieceKind::Cat)),
+            (62, piece(Side::Blue, PieceKind::Rat)),
         ],
-        Side::Red,
+        Side::Blue,
     );
     let forged =
-        jungle_core::Move::from_parts(62, 55, piece(Side::Red, PieceKind::Rat), None, false)
+        jungle_core::Move::from_parts(62, 55, piece(Side::Blue, PieceKind::Rat), None, false)
             .unwrap();
     assert_eq!(den.try_make_move(forged), Err(MoveError::GameOver));
 }
@@ -379,42 +375,42 @@ fn tactical_perft_fixtures_lock_jump_trap_and_water_semantics() {
         (
             position(
                 &[
-                    (15, piece(Side::Blue, PieceKind::Lion)),
-                    (62, piece(Side::Red, PieceKind::Cat)),
+                    (15, piece(Side::Red, PieceKind::Lion)),
+                    (62, piece(Side::Blue, PieceKind::Cat)),
                 ],
-                Side::Blue,
+                Side::Red,
             ),
             [4, 8, 30, 90],
         ),
         (
             position(
                 &[
-                    (15, piece(Side::Blue, PieceKind::Tiger)),
-                    (62, piece(Side::Red, PieceKind::Cat)),
+                    (15, piece(Side::Red, PieceKind::Tiger)),
+                    (62, piece(Side::Blue, PieceKind::Cat)),
                 ],
-                Side::Blue,
+                Side::Red,
             ),
             [3, 6, 20, 60],
         ),
         (
             position(
                 &[
-                    (57, piece(Side::Blue, PieceKind::Elephant)),
-                    (58, piece(Side::Red, PieceKind::Rat)),
-                    (0, piece(Side::Red, PieceKind::Cat)),
+                    (57, piece(Side::Red, PieceKind::Elephant)),
+                    (58, piece(Side::Blue, PieceKind::Rat)),
+                    (0, piece(Side::Blue, PieceKind::Cat)),
                 ],
-                Side::Blue,
+                Side::Red,
             ),
-            [3, 12, 25, 134],
+            [3, 12, 25, 128],
         ),
         (
             position(
                 &[
-                    (22, piece(Side::Blue, PieceKind::Rat)),
-                    (23, piece(Side::Red, PieceKind::Rat)),
-                    (62, piece(Side::Red, PieceKind::Cat)),
+                    (22, piece(Side::Red, PieceKind::Rat)),
+                    (23, piece(Side::Blue, PieceKind::Rat)),
+                    (62, piece(Side::Blue, PieceKind::Cat)),
                 ],
-                Side::Blue,
+                Side::Red,
             ),
             [4, 20, 72, 416],
         ),

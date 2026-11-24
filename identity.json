@@ -1,0 +1,8 @@
+{
+  "model": "GPT-6",
+  "codeAgent": "Codex",
+  "modelPlatform": "official",
+  "githubUrl": "https://github.com/xmiao76/gpt_jungle_web",
+  "gameVersion": "2.0.0",
+  "runtime": "Rust / WebAssembly"
+}

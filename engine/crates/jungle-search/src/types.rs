@@ -2,8 +2,8 @@ use jungle_core::Move;
 use serde::{Deserialize, Serialize};
 
 pub const MAX_SEARCH_DEPTH: u8 = 128;
-pub const DEFAULT_SOFT_TIME_MS: u32 = 1_950;
-pub const DEFAULT_HARD_TIME_MS: u32 = 2_000;
+pub const DEFAULT_SOFT_TIME_MS: u32 = 980;
+pub const DEFAULT_HARD_TIME_MS: u32 = 1_000;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -135,8 +135,8 @@ mod tests {
     #[test]
     fn defaults_are_exactly_the_shipping_budget() {
         let limits = SearchLimits::default();
-        assert_eq!(limits.soft_time_limit_ms, 1_950);
-        assert_eq!(limits.time_limit_ms, 2_000);
+        assert_eq!(limits.soft_time_limit_ms, 980);
+        assert_eq!(limits.time_limit_ms, 1_000);
         assert_eq!(limits.max_depth, 128);
     }
 

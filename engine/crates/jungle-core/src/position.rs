@@ -40,6 +40,8 @@ pub enum MoveError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Undo {
     captured: Option<Piece>,
+    quiet: u32,
+    context: u64,
 }
 
 impl Undo {
@@ -56,6 +58,10 @@ pub struct Position {
     side_occupancy: [u64; 2],
     side_to_move: Side,
     zobrist_hash: u64,
+    quiet: u32,
+    // Positions before each reversible move, including full board for collision checks.
+    previous: Vec<(u64, [u8; BOARD_SIZE])>,
+    context: u64,
 }
 
 impl core::fmt::Debug for Position {
@@ -79,25 +85,25 @@ impl Position {
     #[must_use]
     pub fn initial() -> Self {
         let placements = [
-            (42, Piece::new(Side::Blue, PieceKind::Elephant)),
-            (44, Piece::new(Side::Blue, PieceKind::Wolf)),
-            (46, Piece::new(Side::Blue, PieceKind::Leopard)),
-            (48, Piece::new(Side::Blue, PieceKind::Rat)),
-            (50, Piece::new(Side::Blue, PieceKind::Cat)),
-            (54, Piece::new(Side::Blue, PieceKind::Dog)),
-            (56, Piece::new(Side::Blue, PieceKind::Tiger)),
-            (62, Piece::new(Side::Blue, PieceKind::Lion)),
-            (14, Piece::new(Side::Red, PieceKind::Rat)),
-            (16, Piece::new(Side::Red, PieceKind::Leopard)),
-            (18, Piece::new(Side::Red, PieceKind::Wolf)),
-            (20, Piece::new(Side::Red, PieceKind::Elephant)),
-            (8, Piece::new(Side::Red, PieceKind::Dog)),
-            (12, Piece::new(Side::Red, PieceKind::Cat)),
-            (0, Piece::new(Side::Red, PieceKind::Lion)),
-            (6, Piece::new(Side::Red, PieceKind::Tiger)),
+            (42, Piece::new(Side::Red, PieceKind::Elephant)),
+            (44, Piece::new(Side::Red, PieceKind::Wolf)),
+            (46, Piece::new(Side::Red, PieceKind::Leopard)),
+            (48, Piece::new(Side::Red, PieceKind::Rat)),
+            (50, Piece::new(Side::Red, PieceKind::Cat)),
+            (54, Piece::new(Side::Red, PieceKind::Dog)),
+            (56, Piece::new(Side::Red, PieceKind::Tiger)),
+            (62, Piece::new(Side::Red, PieceKind::Lion)),
+            (14, Piece::new(Side::Blue, PieceKind::Rat)),
+            (16, Piece::new(Side::Blue, PieceKind::Leopard)),
+            (18, Piece::new(Side::Blue, PieceKind::Wolf)),
+            (20, Piece::new(Side::Blue, PieceKind::Elephant)),
+            (8, Piece::new(Side::Blue, PieceKind::Dog)),
+            (12, Piece::new(Side::Blue, PieceKind::Cat)),
+            (0, Piece::new(Side::Blue, PieceKind::Lion)),
+            (6, Piece::new(Side::Blue, PieceKind::Tiger)),
         ];
         // The compiled initial position is necessarily valid.
-        Self::from_piece_placements_checked(&placements, Side::Blue)
+        Self::from_piece_placements_checked(&placements, Side::Red)
             .expect("compiled initial Jungle position must be valid")
     }
 
@@ -180,6 +186,9 @@ impl Position {
             side_occupancy,
             side_to_move,
             zobrist_hash: zobrist_hash & MASK_64,
+            quiet: 0,
+            previous: Vec::new(),
+            context: 0,
         })
     }
 
@@ -285,19 +294,25 @@ impl Position {
 
         let attacker_in_water = is_water(attacker_square);
         let defender_in_water = is_water(defender_square);
-        if attacker.kind() == PieceKind::Rat && defender.kind() == PieceKind::Elephant {
-            return !attacker_in_water && !defender_in_water;
+        if attacker_in_water != defender_in_water {
+            return false;
         }
-        if attacker.kind() == PieceKind::Elephant && defender.kind() == PieceKind::Rat {
-            return self.effective_rank(defender_square) == 0;
+        if attacker_in_water {
+            return attacker.kind() == PieceKind::Rat && defender.kind() == PieceKind::Rat;
         }
-        if attacker_in_water || defender_in_water {
-            return attacker_in_water
-                && defender_in_water
-                && attacker.kind() == PieceKind::Rat
-                && defender.kind() == PieceKind::Rat;
+        let defender_rank = self.effective_rank(defender_square);
+        let attacker_rank = self.effective_rank(attacker_square);
+        if defender_rank == 0 {
+            return true;
         }
-        self.effective_rank(attacker_square) >= self.effective_rank(defender_square)
+        if attacker_rank == 0 {
+            return false;
+        }
+        match (attacker.kind(), defender.kind()) {
+            (PieceKind::Rat, PieceKind::Elephant) => true,
+            (PieceKind::Elephant, PieceKind::Rat) => false,
+            _ => attacker_rank >= defender_rank,
+        }
     }
 
     #[must_use]
@@ -440,6 +455,19 @@ impl Position {
         debug_assert_eq!(self.piece_at(destination), captured);
         debug_assert_eq!(piece.side(), self.side_to_move);
 
+        let quiet = self.quiet;
+        let context = self.context;
+        self.previous.push((self.zobrist_hash, self.board));
+        self.context = if captured.is_some() {
+            0
+        } else {
+            context.wrapping_add(splitmix64(self.zobrist_hash).1)
+        };
+        self.quiet = if captured.is_some() {
+            0
+        } else {
+            quiet.saturating_add(1)
+        };
         let origin_bit = 1_u64 << origin;
         let destination_bit = 1_u64 << destination;
         self.zobrist_hash ^= ZOBRIST_PIECES[origin as usize][piece.code() as usize];
@@ -456,11 +484,18 @@ impl Position {
         self.piece_squares[piece.code() as usize] ^= origin_bit | destination_bit;
         self.side_occupancy[piece.side().index()] ^= origin_bit | destination_bit;
         self.side_to_move = self.side_to_move.opponent();
-        Undo { captured }
+        Undo {
+            captured,
+            quiet,
+            context,
+        }
     }
 
     pub fn unmake_move(&mut self, movement: Move, undo: Undo) {
         debug_assert_eq!(movement.captured(), undo.captured);
+        self.previous.pop();
+        self.quiet = undo.quiet;
+        self.context = undo.context;
         let origin = movement.origin();
         let destination = movement.destination();
         let piece = movement.piece();
@@ -505,8 +540,41 @@ impl Position {
                 winner: self.side_to_move.opponent(),
                 reason: WinReason::NoLegalMoves,
             }
+        } else if let Some(reason) = self.draw_reason() {
+            crate::Outcome::Draw { reason }
         } else {
             crate::Outcome::Ongoing
+        }
+    }
+
+    pub fn quiet_plies(&self) -> u32 {
+        self.quiet
+    }
+    pub fn set_initial_quiet(&mut self, quiet: u32) {
+        self.quiet = quiet;
+    }
+    pub fn search_key(&self) -> u64 {
+        self.zobrist_hash
+            ^ self.context.rotate_left(17)
+            ^ u64::from(self.quiet).wrapping_mul(0x9e3779b97f4a7c15)
+    }
+    pub fn draw_reason(&self) -> Option<crate::DrawReason> {
+        if self.quiet >= 8
+            && self.previous.len() >= 8
+            && self
+                .previous
+                .iter()
+                .rev()
+                .take(self.quiet as usize)
+                .filter(|(key, board)| *key == self.zobrist_hash && board == &self.board)
+                .nth(1)
+                .is_some()
+        {
+            Some(crate::DrawReason::Repetition)
+        } else if self.quiet >= 100 {
+            Some(crate::DrawReason::NoCapture)
+        } else {
+            None
         }
     }
 

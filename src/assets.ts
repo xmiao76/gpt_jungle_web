@@ -37,3 +37,14 @@ export function terrainAsset(terrain: TerrainKind): string {
 
 export const boardBackgroundAsset = requireAsset("board_background.png");
 
+export async function preloadArtwork(onProgress: (fraction: number) => void) {
+  let decoded = 0;
+  await Promise.all(
+    [...assets.values()].map(async (src) => {
+      const image = new Image();
+      image.src = src;
+      await image.decode();
+      onProgress(++decoded / assets.size);
+    }),
+  );
+}

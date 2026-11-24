@@ -2,8 +2,8 @@ use serde_json::Error as JsonError;
 use thiserror::Error;
 
 use crate::{
-    BOARD_SIZE, ENGINE_VERSION, GameStateDto, JungleSaveV1, Move, MoveList, Outcome, Piece,
-    Position, PositionError, ResultType, SaveSettingsV1, Undo,
+    BOARD_SIZE, GameStateDto, Move, MoveList, Outcome, Piece, Position, PositionError,
+    PositionOrigin, ResultType, Undo,
 };
 
 const MAX_IMPORTED_HISTORY: usize = 10_000;
@@ -38,11 +38,7 @@ struct AppliedPly {
 pub struct Session {
     position: Position,
     history: Vec<Move>,
-    /// Save v1 has no field for a nonstandard history origin. Histories are
-    /// serialized only when they canonically replay from the initial setup;
-    /// puzzle sessions retain their UI log but serialize as a strict
-    /// historyless position.
-    history_replayable_from_initial: bool,
+    origin: Option<PositionOrigin>,
     undo_stack: Vec<AppliedPly>,
     redo_stack: Vec<Move>,
 }
@@ -59,7 +55,7 @@ impl Session {
         Self {
             position: Position::initial(),
             history: Vec::new(),
-            history_replayable_from_initial: true,
+            origin: None,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         }
@@ -67,11 +63,15 @@ impl Session {
 
     /// Creates a historyless session around a strictly validated puzzle position.
     pub fn from_position(position: Position) -> Self {
-        let history_replayable_from_initial = position == Position::initial();
+        let origin = (position != Position::initial()).then(|| PositionOrigin {
+            board: position.board_codes().to_vec(),
+            first: position.side_to_move(),
+            quiet: position.quiet_plies(),
+        });
         Self {
             position,
             history: Vec::new(),
-            history_replayable_from_initial,
+            origin,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         }
@@ -89,7 +89,11 @@ impl Session {
 
     #[must_use]
     pub fn legal_moves(&self) -> MoveList {
-        self.position.legal_moves()
+        if self.outcome().is_over() {
+            MoveList::new()
+        } else {
+            self.position.legal_moves()
+        }
     }
 
     #[must_use]
@@ -207,11 +211,8 @@ impl Session {
                 .map(|&code| Piece::from_code(code))
                 .collect(),
             side_to_move: self.position.side_to_move(),
-            move_history: if self.history_replayable_from_initial {
-                self.history.clone()
-            } else {
-                Vec::new()
-            },
+            move_history: self.history.clone(),
+            origin: self.origin.clone(),
             winner: outcome.winner(),
             result: ResultType::from_outcome(outcome),
             result_reason: outcome.reason_text(),
@@ -236,10 +237,21 @@ impl Session {
         }
         let supplied_position = Position::from_board_codes_checked(board, state.side_to_move)?;
 
-        let mut session = if state.move_history.is_empty() {
+        let mut session = if state.move_history.is_empty() && state.origin.is_none() {
             Self::from_position(supplied_position)
         } else {
-            let mut replay = Self::new();
+            let mut replay = if let Some(o) = &state.origin {
+                let board: [u8; BOARD_SIZE] = o
+                    .board
+                    .as_slice()
+                    .try_into()
+                    .map_err(|_| SessionError::InvalidState("Invalid origin board".into()))?;
+                let mut p = Position::from_board_codes_checked(board, o.first)?;
+                p.set_initial_quiet(o.quiet);
+                Self::from_position(p)
+            } else {
+                Self::new()
+            };
             for (index, expected) in state.move_history.iter().copied().enumerate() {
                 let actual = replay
                     .apply_coordinates(expected.origin() as i32, expected.destination() as i32)
@@ -255,12 +267,14 @@ impl Session {
                     });
                 }
             }
-            if replay.position != supplied_position {
+            if replay.position.board_codes() != supplied_position.board_codes()
+                || replay.position.side_to_move() != supplied_position.side_to_move()
+            {
                 return Err(SessionError::InvalidState(
                     "board or side_to_move disagrees with replayed move history".to_owned(),
                 ));
             }
-            // Portable save v1 never preserved command stacks. Keep the full
+            // Native position imports keep the full
             // display/history log while starting a fresh undo/redo boundary.
             replay.undo_stack.clear();
             replay.redo_stack.clear();
@@ -283,56 +297,6 @@ impl Session {
     pub fn from_game_state_json(value: &str) -> Result<Self, SessionError> {
         let state: GameStateDto = serde_json::from_str(value)?;
         Self::from_game_state_dto(state)
-    }
-
-    #[must_use]
-    pub fn export_save_v1(
-        &self,
-        engine_version: impl Into<String>,
-        created_at: impl Into<String>,
-        settings: SaveSettingsV1,
-    ) -> JungleSaveV1 {
-        JungleSaveV1 {
-            schema: JungleSaveV1::SCHEMA.to_owned(),
-            version: JungleSaveV1::VERSION,
-            engine_version: engine_version.into(),
-            created_at: created_at.into(),
-            game_state: self.game_state_dto(),
-            settings,
-        }
-    }
-
-    #[must_use]
-    pub fn export_current_save_v1(
-        &self,
-        created_at: impl Into<String>,
-        settings: SaveSettingsV1,
-    ) -> JungleSaveV1 {
-        self.export_save_v1(ENGINE_VERSION, created_at, settings)
-    }
-
-    pub fn export_save_v1_json(
-        &self,
-        engine_version: impl Into<String>,
-        created_at: impl Into<String>,
-        settings: SaveSettingsV1,
-    ) -> Result<String, SessionError> {
-        Ok(serde_json::to_string_pretty(&self.export_save_v1(
-            engine_version,
-            created_at,
-            settings,
-        ))?)
-    }
-
-    pub fn from_save_v1(save: &JungleSaveV1) -> Result<Self, SessionError> {
-        validate_save_header(save)?;
-        Self::from_game_state_dto(save.game_state.clone())
-    }
-
-    pub fn import_save_v1_json(value: &str) -> Result<(Self, JungleSaveV1), SessionError> {
-        let save: JungleSaveV1 = serde_json::from_str(value)?;
-        let session = Self::from_save_v1(&save)?;
-        Ok((session, save))
     }
 }
 
@@ -362,29 +326,6 @@ fn validate_declared_outcome(
     if state.result_reason != actual.reason_text() {
         return Err(SessionError::InvalidState(
             "result_reason disagrees with the canonical board outcome".to_owned(),
-        ));
-    }
-    Ok(())
-}
-
-fn validate_save_header(save: &JungleSaveV1) -> Result<(), SessionError> {
-    if save.schema != JungleSaveV1::SCHEMA {
-        return Err(SessionError::InvalidSave("unrecognized schema".to_owned()));
-    }
-    if save.version != JungleSaveV1::VERSION {
-        return Err(SessionError::InvalidSave(format!(
-            "unsupported schema version {}",
-            save.version
-        )));
-    }
-    if save.engine_version.trim().is_empty() {
-        return Err(SessionError::InvalidSave(
-            "engineVersion must not be empty".to_owned(),
-        ));
-    }
-    if save.created_at.trim().is_empty() {
-        return Err(SessionError::InvalidSave(
-            "createdAt must not be empty".to_owned(),
         ));
     }
     Ok(())

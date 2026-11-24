@@ -1,0 +1,16 @@
+{
+  "browser": "151.0.7922.34",
+  "side": "red",
+  "mode": "main thread",
+  "passed": [
+    "undo during search",
+    "redo",
+    "restart during search",
+    "flip mapping",
+    "mute",
+    "v1 rejection",
+    "Blue first",
+    "AI vs AI undo and pause",
+    "v2 save reload"
+  ]
+}

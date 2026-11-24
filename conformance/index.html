@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Jungle · Conformance host</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      color: #f5f0dc;
+      background: #112b23;
+      font: 16px system-ui;
+      max-width: 1050px;
+      margin: auto;
+      padding: 2rem;
+    }
+    h1 {
+      font: 2.4rem Georgia;
+    }
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+    button,
+    select {
+      background: #ecd99e;
+      color: #182c23;
+      border: 0;
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+    }
+    section {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    canvas {
+      width: min(43vw, 448px);
+      height: auto;
+      border-radius: 6px;
+    }
+    figure {
+      margin: 0;
+    }
+    p {
+      overflow-wrap: anywhere;
+    }
+    label {
+      display: grid;
+      gap: 0.3rem;
+    }
+    input[type="range"] {
+      width: min(30rem, 90vw);
+    }
+    a {
+      color: #efd488;
+    }
+  </style>
+  <a href="../">Play Jungle</a>
+  <h1>Conformance host</h1>
+  <section>
+    <label>Arena component<input id="file" type="file" accept=".wasm" /></label
+    ><label
+      >Match<select id="pair">
+        <option value="red">Entrant as Red</option>
+        <option value="blue">Entrant as Blue</option>
+        <option value="self">Self-play</option>
+      </select></label
+    ><button id="run">Run match</button>
+  </section>
+  <p id="status" role="status">The release component is selected by default.</p>
+  <section>
+    <figure>
+      <canvas width="448" height="576"></canvas>
+      <figcaption>Red seat</figcaption>
+    </figure>
+    <figure>
+      <canvas width="448" height="576"></canvas>
+      <figcaption>Blue seat</figcaption>
+    </figure>
+  </section>
+  <label
+    >Replay revision<input
+      id="seek"
+      type="range"
+      min="0"
+      max="0"
+      value="0"
+      disabled
+  /></label>
+  <script type="module" src="./page.mjs"></script>
+</html>

@@ -3,14 +3,14 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "public/generated", "coverage", "playwright-report", "test-results"] },
+  { ignores: ["dist", "generated", "release", "engine/target", "public/generated", "coverage", "playwright-report", "test-results"] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["scripts/**/*.mjs", "eslint.config.js"],
+    files: ["scripts/**/*.mjs", "conformance/**/*.mjs", "eslint.config.js"],
     languageOptions: {
       ecmaVersion: 2023,
-      globals: globals.node,
+      globals: { ...globals.node, ...globals.browser, ...globals.worker },
     },
   },
   {

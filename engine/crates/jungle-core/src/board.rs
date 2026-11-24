@@ -6,10 +6,10 @@ pub const BOARD_COLS: usize = 7;
 pub const BOARD_ROWS: usize = 9;
 pub const BOARD_SIZE: usize = BOARD_COLS * BOARD_ROWS;
 
-pub const RED_DEN: u8 = 3;
-pub const BLUE_DEN: u8 = 59;
-pub const RED_TRAPS: [u8; 3] = [2, 4, 10];
-pub const BLUE_TRAPS: [u8; 3] = [58, 60, 52];
+pub const RED_DEN: u8 = 59;
+pub const BLUE_DEN: u8 = 3;
+pub const RED_TRAPS: [u8; 3] = [52, 58, 60];
+pub const BLUE_TRAPS: [u8; 3] = [2, 4, 10];
 pub const WATER: [u8; 12] = [22, 23, 25, 26, 29, 30, 32, 33, 36, 37, 39, 40];
 pub const WATER_MASK: u64 = mask_of(&WATER);
 pub const RED_TRAP_MASK: u64 = mask_of(&RED_TRAPS);

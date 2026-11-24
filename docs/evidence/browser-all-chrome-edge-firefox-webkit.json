@@ -1,0 +1,248 @@
+[
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "browser": "chrome",
+    "version": "158.0.8127.38",
+    "target": "hosted",
+    "origin": "http://127.0.0.1:63219",
+    "forcedFallback": false,
+    "coldLoadMs": 642,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 162,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 81,
+      "maxMs": 235.52999997138977,
+      "meanMs": 223.20469135119592
+    }
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "htmlHash": "375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146",
+    "browser": "chrome",
+    "version": "158.0.8127.38",
+    "target": "file",
+    "forcedFallback": false,
+    "coldLoadMs": 315,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 68,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 34,
+      "maxMs": 235.40000009536743,
+      "meanMs": 208.35294115543365
+    }
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "htmlHash": "375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146",
+    "browser": "chrome",
+    "version": "158.0.8127.38",
+    "target": "file",
+    "forcedFallback": true,
+    "coldLoadMs": 334,
+    "runtime": "main thread",
+    "medium": {
+      "moves": 1,
+      "maxMs": 740.5999999046326,
+      "meanMs": 740.5999999046326
+    }
+  },
+  {
+    "browser": "chrome",
+    "host": "http://127.0.0.1:63219",
+    "hash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "title": "GPT-6 · Codex",
+    "games": [
+      {
+        "plies": 139,
+        "reason": "den",
+        "winner": "red",
+        "renderedPerSeat": 140
+      },
+      {
+        "plies": 36,
+        "reason": "den",
+        "winner": "blue",
+        "renderedPerSeat": 37
+      },
+      {
+        "plies": 79,
+        "reason": "repetition",
+        "winner": null,
+        "renderedPerSeat": 80
+      }
+    ]
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "browser": "edge",
+    "version": "158.0.4370.33",
+    "target": "hosted",
+    "origin": "http://127.0.0.1:63219",
+    "forcedFallback": false,
+    "coldLoadMs": 643,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 68,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 34,
+      "maxMs": 236.08000016212463,
+      "meanMs": 208.5263235358631
+    }
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "htmlHash": "375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146",
+    "browser": "edge",
+    "version": "158.0.4370.33",
+    "target": "file",
+    "forcedFallback": false,
+    "coldLoadMs": 378,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 74,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 37,
+      "maxMs": 235.39999985694885,
+      "meanMs": 211.25675673742552
+    }
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "htmlHash": "375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146",
+    "browser": "edge",
+    "version": "158.0.4370.33",
+    "target": "file",
+    "forcedFallback": true,
+    "coldLoadMs": 300,
+    "runtime": "main thread",
+    "medium": {
+      "moves": 1,
+      "maxMs": 741.2000000476837,
+      "meanMs": 741.2000000476837
+    }
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "browser": "firefox",
+    "version": "153.0",
+    "target": "hosted",
+    "origin": "http://127.0.0.1:63219",
+    "forcedFallback": false,
+    "coldLoadMs": 759,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 208,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 104,
+      "maxMs": 249.06000000000495,
+      "meanMs": 232.12923076923065
+    }
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "htmlHash": "375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146",
+    "browser": "firefox",
+    "version": "153.0",
+    "target": "file",
+    "forcedFallback": false,
+    "coldLoadMs": 326,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 156,
+      "reason": "repetition",
+      "winner": null
+    },
+    "easy": {
+      "moves": 78,
+      "maxMs": 241,
+      "meanMs": 236.53846153846155
+    }
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "htmlHash": "375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146",
+    "browser": "firefox",
+    "version": "153.0",
+    "target": "file",
+    "forcedFallback": true,
+    "coldLoadMs": 290,
+    "runtime": "main thread",
+    "medium": {
+      "moves": 1,
+      "maxMs": 740,
+      "meanMs": 740
+    }
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "browser": "webkit",
+    "version": "26.5",
+    "target": "hosted",
+    "origin": "http://127.0.0.1:63219",
+    "forcedFallback": false,
+    "coldLoadMs": 627,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 76,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 38,
+      "maxMs": 278.3599999999997,
+      "meanMs": 232.4663157894736
+    }
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "htmlHash": "375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146",
+    "browser": "webkit",
+    "version": "26.5",
+    "target": "file",
+    "forcedFallback": false,
+    "coldLoadMs": 350,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 76,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 38,
+      "maxMs": 288,
+      "meanMs": 233.92105263157896
+    }
+  },
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "htmlHash": "375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146",
+    "browser": "webkit",
+    "version": "26.5",
+    "target": "file",
+    "forcedFallback": true,
+    "coldLoadMs": 317,
+    "runtime": "main thread",
+    "medium": {
+      "moves": 1,
+      "maxMs": 775,
+      "meanMs": 775
+    }
+  }
+]

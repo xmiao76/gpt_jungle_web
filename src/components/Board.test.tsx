@@ -8,7 +8,7 @@ describe("Board", () => {
       <Board snapshot={snapshotFixture()} flipped={false} selected={null} targets={[]} disabled={false} onSquare={() => undefined} />,
     );
     expect(screen.getAllByRole("gridcell")).toHaveLength(63);
-    expect(screen.getByRole("gridcell", { name: /A7, Land, blue Elephant/i })).toBeInTheDocument();
+    expect(screen.getByRole("gridcell", { name: /A7, Land, red Elephant/i })).toBeInTheDocument();
   });
 
   it("maps flipped display clicks back to canonical indices", () => {
@@ -48,9 +48,9 @@ describe("Board", () => {
         onSquare={() => undefined}
       />,
     );
-    expect(screen.getByRole("gridcell", { name: /A3, Land, red Rat, legal capture/i })).toHaveClass("board-square--capture");
+    expect(screen.getByRole("gridcell", { name: /A3, Land, blue Rat, legal capture/i })).toHaveClass("board-square--capture");
     expect(document.querySelector('[data-feedback-index="14"]')).toHaveClass("feedback-square--capture");
-    expect(screen.getByAltText("Blue Elephant at A7")).toBeInTheDocument();
+    expect(screen.getByAltText("Red Elephant at A7")).toBeInTheDocument();
   });
 
   it("keeps selected-piece feedback separate from the terrain and piece layers", () => {
@@ -65,7 +65,7 @@ describe("Board", () => {
       />,
     );
 
-    const selectedCell = screen.getByRole("gridcell", { name: /A7, Land, blue Elephant/i });
+    const selectedCell = screen.getByRole("gridcell", { name: /A7, Land, red Elephant/i });
     expect(selectedCell).toHaveAttribute("aria-selected", "true");
     expect(selectedCell.querySelector(".move-marker")).toBeNull();
     expect(document.querySelector('.piece[data-piece-index="42"]')).toBeInTheDocument();

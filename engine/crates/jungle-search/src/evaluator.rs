@@ -361,7 +361,7 @@ mod tests {
         )
         .expect("model");
         let position = Position::initial();
-        assert_eq!(model.evaluate(&position), 4);
+        assert_eq!(model.evaluate(&position), -4);
         assert_eq!(model.evaluate(&position), model.evaluate(&position));
     }
 }
