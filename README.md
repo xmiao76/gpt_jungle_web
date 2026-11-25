@@ -4,14 +4,14 @@ Play Dou Shou Qi on the [hosted site](https://gpt-jungle.pages.dev/) or open [th
 
 <!-- release -->
 
-GPT-6 · Codex · 2.0.0
+GPT 6.2 Astra · Codex · 2.0.0
 
-- Model GPT-6, code agent Codex, platform official.
+- Model GPT 6.2 Astra, code agent Codex, platform official.
 - Engine 2.0.0, Rust / WebAssembly.
 - Source https://github.com/xmiao76/gpt_jungle_web
 - Rules `desktop-jungle-v2` · `a457bbc009e975a9eafe5ff1f8fa40ca2548f2a689b121c8c4ed99dd0f3fdc57`
-- `gpt-6-codex-2.0.0.wasm` · SHA-256 `4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034`
-- `release/index.html` · SHA-256 `375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146`
+- `gpt-6-2-astra-codex-2.0.0.wasm` · SHA-256 `cc17fc4561a2ee32790fd66006ead24a833192e2e0947c850ddf6e1735019b34`
+- `release/index.html` · SHA-256 `d485e9679b2f48f5f13d68813850e41b1133700e6082fa9168da60282d2e14f8`
 
 <!-- /release -->
 
@@ -40,7 +40,7 @@ npm run preview
 
 The release command writes the static site to `dist`, the component and local HTML to `release`, and both SHA-256 values to this README and `release/SHA256.txt`. The HTML embeds the very same standalone engine as the hosted UI. Opening it through a file URL requires no installation or network.
 
-The public download and offline edition are also available directly. [Arena component](https://gpt-jungle.pages.dev/gpt-6-codex-2.0.0.wasm) · [Single-file HTML](https://gpt-jungle.pages.dev/release/) · [Release source branch](https://github.com/xmiao76/gpt_jungle_web/tree/Arena-WebAssembly)
+The public download and offline edition are also available directly. [Arena component](https://gpt-jungle.pages.dev/gpt-6-2-astra-codex-2.0.0.wasm) · [Single-file HTML](https://gpt-jungle.pages.dev/release/) · [Release source branch](https://github.com/xmiao76/gpt_jungle_web/tree/Arena-WebAssembly)
 
 ```sh
 npm test
@@ -48,7 +48,7 @@ npm run test:rust
 npm run test:release
 npm run test:e2e
 npm run benchmark:ai
-wasm-tools component wit release/gpt-6-codex-2.0.0.wasm
+wasm-tools component wit release/gpt-6-2-astra-codex-2.0.0.wasm
 npm run deploy
 npm run test:public
 ```

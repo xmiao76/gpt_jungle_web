@@ -1,5 +1,5 @@
 {
-  "model": "GPT-6",
+  "model": "GPT 6.2 Astra",
   "codeAgent": "Codex",
   "modelPlatform": "official",
   "githubUrl": "https://github.com/xmiao76/gpt_jungle_web",

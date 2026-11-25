@@ -1,10 +1,10 @@
 {
-  "hash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+  "hash": "cc17fc4561a2ee32790fd66006ead24a833192e2e0947c850ddf6e1735019b34",
   "bytes": 452804,
   "info": {
-    "title": "GPT-6 · Codex",
+    "title": "GPT 6.2 Astra · Codex",
     "gameVersion": "2.0.0",
-    "model": "GPT-6",
+    "model": "GPT 6.2 Astra",
     "codeAgent": "Codex",
     "modelPlatform": "official",
     "githubUrl": "https://github.com/xmiao76/gpt_jungle_web",
@@ -14,18 +14,18 @@
     "rulesDigest": "a457bbc009e975a9eafe5ff1f8fa40ca2548f2a689b121c8c4ed99dd0f3fdc57"
   },
   "times": {
-    "transpileMs": 579.2985,
-    "smokeMs": 133.09860000000003,
-    "nodes1000": 11.738299999999981,
-    "nodes5000": 15.273200000000088,
-    "nodes20000": 45.266000000000076,
-    "nodes100000": 300.8679000000002,
-    "nodes500000": 1514.8899
+    "transpileMs": 528.7037,
+    "smokeMs": 108.51100000000008,
+    "nodes1000": 9.46609999999987,
+    "nodes5000": 14.739100000000008,
+    "nodes20000": 61.8286999999998,
+    "nodes100000": 317.5999999999999,
+    "nodes500000": 1552.7731999999999
   },
   "portableCases": 23,
   "frameHashes": [
     "4a7ea9a3c31cbdeb0aebfbb0977d611ce121544d0b8171249c1703a8b33e7f85",
     "669d9e6745a3b791602f45580db20b04bc28df70d92cad25396382224ad28b06"
   ],
-  "fixtureHash": "247dd64df2f249209672d5fec72d15d47c4c1d0e51aa805a9c8c87ed97e9cdac"
+  "fixtureHash": "14643ac8b7f57a6597202cd0ee87aa6d10a8aba19d911373a712f16fd46822a7"
 }

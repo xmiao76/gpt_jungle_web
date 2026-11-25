@@ -1,6 +1,17 @@
 # Jungle 2.0.0 release validation
 
-The release identifies itself as **GPT-6 · Codex**, platform `official`. Validation used Windows 10, Rust 1.94.1, wasm-tools 1.263.0, wasm-bindgen-cli 0.2.130, Node 26.13.1 and jco-transpile 0.24.0.
+The rebuilt component reports model **GPT 6.2 Astra**, title **GPT 6.2 Astra · Codex**, platform `official` and version `2.0.0`. The hosted game and single-file HTML embed those same metadata and component bytes.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `release/gpt-6-2-astra-codex-2.0.0.wasm` | 452,804 | `cc17fc4561a2ee32790fd66006ead24a833192e2e0947c850ddf6e1735019b34` |
+| `release/index.html` | 1,241,292 | `d485e9679b2f48f5f13d68813850e41b1133700e6082fa9168da60282d2e14f8` |
+
+`npm run verify:release` verified both checksums and the embedded component. `npm run test:release` instantiated the renamed component, verified its identity and passed admission, rule, render and strategy checks. [Rebuilt component measurements](evidence/admission.json)
+
+## Original 2.0.0 build
+
+The remaining measurements describe the original **GPT-6 · Codex** build. Its artifacts and all original browser and admission records are available together at commit `84a8bfa`. Validation used Windows 10, Rust 1.94.1, wasm-tools 1.263.0, wasm-bindgen-cli 0.2.130, Node 26.13.1 and jco-transpile 0.24.0. [Original validation record](https://github.com/xmiao76/gpt_jungle_web/blob/84a8bfa/docs/release-validation.md)
 
 | File | Bytes | SHA-256 |
 | --- | ---: | --- |
@@ -11,7 +22,7 @@ The release identifies itself as **GPT-6 · Codex**, platform `official`. Valida
 
 The release build checked the SHA-256 of the canonical rules profile against `a457bbc009e975a9eafe5ff1f8fa40ca2548f2a689b121c8c4ed99dd0f3fdc57`. The independent referee and Rust engine agreed on both openings, all 23 portable legality cases, capture and quiet counters, outcome precedence and repetition.
 
-The component's expanded WIT matched the checked-in world. Transpilation took 579 ms. The fresh-instance admission smoke test took 133 ms. On the opening, Hard used 45 ms at 20,000 nodes and 1.51 s at 500,000 nodes. Geometry, opacity, flip, deterministic choice, isolated instances, capture animation and direct replay were checked against the release file. [Admission measurements](evidence/admission.json)
+The component's expanded WIT matched the checked-in world. Transpilation took 579 ms. The fresh-instance admission smoke test took 133 ms. On the opening, Hard used 45 ms at 20,000 nodes and 1.51 s at 500,000 nodes. Geometry, opacity, flip, deterministic choice, isolated instances, capture animation and direct replay were checked against the release file. [Original admission measurements](https://github.com/xmiao76/gpt_jungle_web/blob/84a8bfa/docs/evidence/admission.json)
 
 The independent browser referee ran three Medium matches at 20,000 nodes, seed 20261120. Both seats drew the opening and every subsequent revision, including the result.
 
