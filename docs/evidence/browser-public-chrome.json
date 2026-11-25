@@ -1,0 +1,52 @@
+[
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "browser": "chrome",
+    "version": "158.0.8127.38",
+    "target": "hosted",
+    "origin": "https://f6cc46a1.gpt-jungle.pages.dev",
+    "forcedFallback": false,
+    "coldLoadMs": 741,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 76,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 38,
+      "maxMs": 236.55499982833862,
+      "meanMs": 208.1526316090634
+    }
+  },
+  {
+    "browser": "chrome",
+    "host": "https://f6cc46a1.gpt-jungle.pages.dev",
+    "hash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "title": "GPT-6 · Codex",
+    "games": [
+      {
+        "plies": 139,
+        "reason": "den",
+        "winner": "red",
+        "renderedPerSeat": 140
+      },
+      {
+        "plies": 36,
+        "reason": "den",
+        "winner": "blue",
+        "renderedPerSeat": 37
+      },
+      {
+        "plies": 79,
+        "reason": "repetition",
+        "winner": null,
+        "renderedPerSeat": 80
+      }
+    ],
+    "publicDownloads": {
+      "contentType": "application/wasm",
+      "offlineHash": "375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146"
+    }
+  }
+]

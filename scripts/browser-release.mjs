@@ -72,7 +72,9 @@ async function download(page) {
     action.click(),
   ]);
   assert.equal(d.suggestedFilename(), meta.filename);
-  assert.equal(digest(readFileSync(await d.path())), meta.sha256);
+  const bytes = readFileSync(await d.path());
+  assert.equal(digest(bytes), meta.sha256);
+  return bytes;
 }
 async function humanGame(page, record, photos, level = "easy") {
   const ref = new Referee();
@@ -187,7 +189,7 @@ async function webGame(
     };
     results.push(r);
     if (blocked) assert.equal(r.runtime, "main thread");
-    await download(page);
+    const downloaded = await download(page);
     if (photos) {
       await shot(page, "setup");
       await page
@@ -235,23 +237,29 @@ async function webGame(
       r.runtime,
       r.humanGame ?? r.hard ?? r.medium,
     );
+    return downloaded;
   } finally {
     await ctx.close();
   }
 }
-async function host(browser, name) {
+async function host(browser, name, downloaded) {
   const page = await browser.newPage({
     viewport: { width: 1120, height: 900 },
   });
   try {
     await page.goto(url + "/conformance/");
+    if (downloaded)
+      await page.locator("#file").setInputFiles({
+        name: meta.filename, mimeType: "application/wasm", buffer: downloaded,
+      });
     const value = await page.evaluate(async () => {
       const { loadDefault, admission, smoke, match, Seat } = await import(
         "./host.mjs"
       );
       const { wire } = await import("./referee.mjs");
-      const { file, fixture } = await loadDefault(),
-        entry = await admission(file),
+      const { file, fixture } = await loadDefault();
+      const selected = document.querySelector("#file").files[0];
+      const entry = await admission(selected ? new Uint8Array(await selected.arrayBuffer()) : file),
         other = await admission(fixture),
         info = await smoke(entry);
       const games = [];
@@ -296,6 +304,17 @@ async function host(browser, name) {
       return { hash: entry.hash, title: info.title, games };
     });
     assert.equal(value.hash, meta.sha256);
+    if (downloaded) {
+      const response = await page.request.get(url + "/" + meta.filename);
+      assert.equal(response.status(), 200);
+      assert.match(response.headers()["content-type"], /^application\/wasm\b/i);
+      assert.equal(digest(await response.body()), value.hash);
+      const offline = await page.request.get(url + "/release/");
+      assert.equal(offline.status(), 200);
+      const offlineHash = digest(await offline.body());
+      assert.equal(offlineHash, digest(readFileSync("release/index.html")));
+      value.publicDownloads = { contentType: response.headers()["content-type"], offlineHash };
+    }
     results.push({ browser: name, host: url, ...value });
     await shot(page, "arena-orientations");
     console.log("Conformance", value.games);
@@ -318,8 +337,9 @@ try {
       headless: true,
     });
     try {
-      if (["all", "hosted", "hard", "human-hard"].includes(target))
-        await webGame(
+      let downloaded;
+      if (["all", "hosted", "public", "hard", "human-hard"].includes(target))
+        downloaded = await webGame(
           browser,
           name,
           url + "/",
@@ -328,8 +348,8 @@ try {
       if (["all", "file"].includes(target)) await webGame(browser, name, file);
       if (["all", "fallback", "fallback-game"].includes(target))
         await webGame(browser, name, file, false, true);
-      if (target === "host" || (target === "all" && name === names[0]))
-        await host(browser, name);
+      if (target === "host" || (["all", "public"].includes(target) && name === names[0]))
+        await host(browser, name, target === "public" ? downloaded : undefined);
     } finally {
       await browser.close();
     }
@@ -338,7 +358,7 @@ try {
   writeFileSync(
     evidence +
       "/browser-" +
-      (process.env.PLAYWRIGHT_BASE_URL ? "public-" : "") +
+      (process.env.PLAYWRIGHT_BASE_URL && target !== "public" ? "public-" : "") +
       target +
       "-" +
       names.join("-") +

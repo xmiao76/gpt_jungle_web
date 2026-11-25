@@ -21,7 +21,7 @@
     "benchmark:legacy": "python -m tools.web_ai_benchmark",
     "benchmark:ai": "node scripts/benchmark-release.mjs",
     "test:e2e": "node scripts/browser-release.mjs",
-    "test:public": "cross-env PLAYWRIGHT_BASE_URL=https://gpt-jungle.pages.dev node scripts/browser-release.mjs --target hosted --browsers chrome",
+    "test:public": "cross-env PLAYWRIGHT_BASE_URL=https://gpt-jungle.pages.dev node scripts/browser-release.mjs --target public --browsers chrome,edge,firefox,webkit",
     "test:all": "npm run verify:release && npm run build && npm run verify:python && npm run test:python && npm run lint:rust && npm run test:rust && npm run lint && npm test && npm run test:release && npm run test:e2e && npm run test:controls",
     "predeploy": "npm run build",
     "deploy": "wrangler pages deploy dist --project-name gpt-jungle --branch main",

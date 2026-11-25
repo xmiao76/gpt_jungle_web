@@ -1,0 +1,22 @@
+[
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "htmlHash": "375a68e2a1a761d5cfcb82d07870ec4df0a504b39376404e9a560bda168c3146",
+    "browser": "chrome",
+    "version": "158.0.8127.38",
+    "target": "file",
+    "forcedFallback": true,
+    "coldLoadMs": 366,
+    "runtime": "main thread",
+    "humanGame": {
+      "plies": 165,
+      "reason": "no-capture",
+      "winner": null
+    },
+    "easy": {
+      "moves": 82,
+      "maxMs": 240,
+      "meanMs": 237.70121951801022
+    }
+  }
+]

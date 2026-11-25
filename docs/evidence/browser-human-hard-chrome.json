@@ -1,0 +1,22 @@
+[
+  {
+    "componentHash": "4cafc7f31b48503660da34fc5c1e62a50605c91249b70067baca091de7378034",
+    "browser": "chrome",
+    "version": "158.0.8127.38",
+    "target": "hosted",
+    "origin": "http://127.0.0.1:63703",
+    "forcedFallback": false,
+    "coldLoadMs": 428,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 94,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "hard": {
+      "moves": 47,
+      "maxMs": 970.0999999046326,
+      "meanMs": 895.4428723314975
+    }
+  }
+]

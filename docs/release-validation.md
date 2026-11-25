@@ -49,3 +49,30 @@ node scripts/browser-release.mjs --target fallback-game --browsers chrome
 ```
 
 The Python provenance check verified 18 frozen source files. All 110 Python tests, the Rust workspace tests, 15 Vitest tests, Clippy, ESLint, TypeScript and the production build passed. Browser controls covered search cancellation, undo and redo, Blue first, board flip, mute, auto-play pause, version-1 save rejection and a version-2 round trip. [Controls record](evidence/controls.json)
+
+## Browser games
+
+Each browser finished a scripted human game on the local production server and from the release HTML opened through a file URL. The offline tests blocked HTTP and HTTPS. Every download from the setup screen had the release filename and SHA-256.
+
+| Browser | Hosted cold start | File cold start | Hosted / file plies | Normal runtime |
+| --- | ---: | ---: | ---: | --- |
+| Chrome 158.0.8127.38 | 642 ms | 315 ms | 162 / 68 | Worker |
+| Edge 158.0.4370.33 | 643 ms | 378 ms | 68 / 74 | Worker |
+| Firefox 153.0 | 759 ms | 326 ms | 208 / 156 | Worker |
+| Playwright WebKit 26.5 | 627 ms | 350 ms | 76 / 76 | Worker |
+
+The offline Firefox game drew by repetition. The other seven games ended by den entry. Disabling worker construction in all four browsers selected the main-thread fallback and produced a legal Medium opening reply. Native Safari was unavailable on Windows. [Browser measurements and outcomes](evidence/browser-all-chrome-edge-firefox-webkit.json)
+
+The screenshot review covered setup, loading, help, selection, history, diagnostics, results and the two Arena orientations. [Screenshots](evidence/screens/)
+
+In Chrome, Hard AI-vs-AI drew by repetition after 297 plies. Mean request-to-UI time was 963.7 ms and the maximum was 973.7 ms. In the human-vs-Hard game, Blue won by den entry after 94 plies. Its 47 replies averaged 895.4 ms and peaked at 970.1 ms. The separate forced-fallback game played 165 plies to a quiet-limit draw with the network blocked. [AI-vs-AI](evidence/browser-hard-chrome.json) · [Human vs Hard](evidence/browser-human-hard-chrome.json) · [Full fallback game](evidence/browser-fallback-game-chrome.json)
+
+## Public release
+
+Cloudflare Pages deployed the files built from commit `8b55a58` to the existing `gpt-jungle` project on its production branch `main` on November 24, 2026. The component, offline HTML, host module, compiler Wasm and published checksum manifest returned HTTP 200 with matching bytes at the production alias and immutable URL. Both Wasm downloads used `application/wasm`. GitHub's raw release files also matched both checksums. [Production](https://gpt-jungle.pages.dev/) · [Immutable deployment](https://f6cc46a1.gpt-jungle.pages.dev/) · [Release source](https://github.com/xmiao76/gpt_jungle_web/commit/8b55a58)
+
+A fresh Windows clone verified the committed files before installing dependencies. Running `npm ci` and `npm run build` in that clone reproduced both release SHA-256 values. The complete Linux CI suite passed on the release commit. [CI run](https://github.com/xmiao76/gpt_jungle_web/actions/runs/45485567172)
+
+`npm run test:public` completed games on the production alias in Chrome, Edge, Firefox and WebKit. Each ended by den entry. Chrome also completed a game on the immutable deployment. At each URL the test selected the bytes downloaded through the game menu in the conformance host, won both fixture matches and reached the same repetition draw in self-play. [Production results](evidence/browser-public-chrome-edge-firefox-webkit.json) · [Immutable deployment results](evidence/browser-public-chrome.json)
+
+Chrome opened the public Arena upload route on November 24, 2026. It returned HTTP 200 with the leaderboard homepage, canonical URL `https://jungle-leaderboard.pages.dev/`, zero file inputs and no Arena or upload link. Catalog admission and ranking remain unverified. The deployed independent host accepts the downloadable entrant. [Public Arena upload route](https://jungle-leaderboard.pages.dev/arena/upload/) · [Deployed conformance host](https://gpt-jungle.pages.dev/conformance/)

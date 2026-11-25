@@ -40,6 +40,8 @@ npm run preview
 
 The release command writes the static site to `dist`, the component and local HTML to `release`, and both SHA-256 values to this README and `release/SHA256.txt`. The HTML embeds the very same standalone engine as the hosted UI. Opening it through a file URL requires no installation or network.
 
+The public download and offline edition are also available directly. [Arena component](https://gpt-jungle.pages.dev/gpt-6-codex-2.0.0.wasm) · [Single-file HTML](https://gpt-jungle.pages.dev/release/) · [Release source branch](https://github.com/xmiao76/gpt_jungle_web/tree/Arena-WebAssembly)
+
 ```sh
 npm test
 npm run test:rust
@@ -48,6 +50,7 @@ npm run test:e2e
 npm run benchmark:ai
 wasm-tools component wit release/gpt-6-codex-2.0.0.wasm
 npm run deploy
+npm run test:public
 ```
 
 ## Runtime
