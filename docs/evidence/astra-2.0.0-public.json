@@ -1,0 +1,112 @@
+[
+  {
+    "componentHash": "cc17fc4561a2ee32790fd66006ead24a833192e2e0947c850ddf6e1735019b34",
+    "browser": "chrome",
+    "version": "158.0.8127.38",
+    "target": "hosted",
+    "origin": "https://gpt-jungle.pages.dev",
+    "forcedFallback": false,
+    "coldLoadMs": 1188,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 68,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 34,
+      "maxMs": 235.70499992370605,
+      "meanMs": 209.27617648068596
+    }
+  },
+  {
+    "browser": "chrome",
+    "host": "https://gpt-jungle.pages.dev",
+    "hash": "cc17fc4561a2ee32790fd66006ead24a833192e2e0947c850ddf6e1735019b34",
+    "title": "GPT 6.2 Astra · Codex",
+    "games": [
+      {
+        "plies": 139,
+        "reason": "den",
+        "winner": "red",
+        "renderedPerSeat": 140
+      },
+      {
+        "plies": 36,
+        "reason": "den",
+        "winner": "blue",
+        "renderedPerSeat": 37
+      },
+      {
+        "plies": 79,
+        "reason": "repetition",
+        "winner": null,
+        "renderedPerSeat": 80
+      }
+    ],
+    "publicDownloads": {
+      "contentType": "application/wasm",
+      "offlineHash": "d485e9679b2f48f5f13d68813850e41b1133700e6082fa9168da60282d2e14f8"
+    }
+  },
+  {
+    "componentHash": "cc17fc4561a2ee32790fd66006ead24a833192e2e0947c850ddf6e1735019b34",
+    "browser": "edge",
+    "version": "158.0.4370.33",
+    "target": "hosted",
+    "origin": "https://gpt-jungle.pages.dev",
+    "forcedFallback": false,
+    "coldLoadMs": 3914,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 68,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 34,
+      "maxMs": 235.25999999046326,
+      "meanMs": 208.6895588566275
+    }
+  },
+  {
+    "componentHash": "cc17fc4561a2ee32790fd66006ead24a833192e2e0947c850ddf6e1735019b34",
+    "browser": "firefox",
+    "version": "153.0",
+    "target": "hosted",
+    "origin": "https://gpt-jungle.pages.dev",
+    "forcedFallback": false,
+    "coldLoadMs": 1104,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 156,
+      "reason": "repetition",
+      "winner": null
+    },
+    "easy": {
+      "moves": 78,
+      "maxMs": 244.71999999999935,
+      "meanMs": 236.48743589743594
+    }
+  },
+  {
+    "componentHash": "cc17fc4561a2ee32790fd66006ead24a833192e2e0947c850ddf6e1735019b34",
+    "browser": "webkit",
+    "version": "26.5",
+    "target": "hosted",
+    "origin": "https://gpt-jungle.pages.dev",
+    "forcedFallback": false,
+    "coldLoadMs": 1127,
+    "runtime": "worker",
+    "humanGame": {
+      "plies": 76,
+      "reason": "den",
+      "winner": "blue"
+    },
+    "easy": {
+      "moves": 38,
+      "maxMs": 269.84000000000015,
+      "meanMs": 230.9384210526316
+    }
+  }
+]

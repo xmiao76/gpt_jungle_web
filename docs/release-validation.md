@@ -9,6 +9,8 @@ The rebuilt component reports model **GPT 6.2 Astra**, title **GPT 6.2 Astra · 
 
 `npm run verify:release` verified both checksums and the embedded component. `npm run test:release` instantiated the renamed component, verified its identity and passed admission, rule, render and strategy checks. [Rebuilt component measurements](evidence/admission.json)
 
+Cloudflare Pages published this rebuild from commit `f1aa156`. Chrome verified the model name in the offline game and on both public URLs. The offline download, public component and published single-file HTML matched the release checksums. Chrome, Edge, Firefox and WebKit each completed a production game. The component downloaded from the game won both fixture matches and drew by repetition in self-play. [Deployment](https://b8737115.gpt-jungle.pages.dev/) · [Public browser results](evidence/astra-2.0.0-public.json)
+
 ## Original 2.0.0 build
 
 The remaining measurements describe the original **GPT-6 · Codex** build. Its artifacts and all original browser and admission records are available together at commit `84a8bfa`. Validation used Windows 10, Rust 1.94.1, wasm-tools 1.263.0, wasm-bindgen-cli 0.2.130, Node 26.13.1 and jco-transpile 0.24.0. [Original validation record](https://github.com/xmiao76/gpt_jungle_web/blob/84a8bfa/docs/release-validation.md)
